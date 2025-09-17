@@ -1,0 +1,381 @@
+[dotenv@17.2.1] injecting env (55) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[dotenv@17.2.1] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[dotenv@17.2.1] injecting env (0) from .env -- tip: 📡 version env with Radar: https://dotenvx.com/radar
+[dotenv@17.2.1] injecting env (0) from .env -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[2025-09-17 17:53:15:5315] [32minfo[39m: [32mEnvironment configuration loaded successfully[39m
+{
+  "metadata": {
+    "nodeEnv": "development",
+    "port": 4001,
+    "dbHost": "156.67.218.14",
+    "dbPort": 5432,
+    "redisConfigured": false,
+    "mqttConfigured": true,
+    "swaggerEnabled": true,
+    "monitoringEnabled": false
+  }
+}
+[dotenv@17.2.1] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+[2025-09-17 17:53:15:5315] [32minfo[39m: [32mService starting up[39m
+{
+  "metadata": {
+    "category": "system",
+    "service": "smart-parking-backend",
+    "version": "1.0.0",
+    "environment": "development",
+    "nodeVersion": "v22.19.0",
+    "platform": "darwin"
+  }
+}
+[2025-09-17 17:53:15:5315] [32minfo[39m: [32mServer started successfully[39m
+{
+  "metadata": {
+    "category": "system",
+    "port": "4001",
+    "environment": "development",
+    "url": "http://localhost:4001",
+    "apiDocs": "http://localhost:4001/api-docs"
+  }
+}
+[2025-09-17 17:53:18:5318] [32minfo[39m: [32mDatabase connection established[39m
+{
+  "metadata": {
+    "category": "system",
+    "database": "PostgreSQL",
+    "status": "connected"
+  }
+}
+[2025-09-17 17:53:18:5318] [32minfo[39m: [32mMQTT service initialized for ChirpStack integration[39m
+{
+  "metadata": {}
+}
+[2025-09-17 17:53:18:5318] [35mhttp[39m: [35mIncoming request[39m
+{
+  "metadata": {
+    "requestId": "1758111798673-9yum1nxxl",
+    "method": "POST",
+    "url": "/api/auth/login",
+    "query": {},
+    "ip": "::1",
+    "userAgent": "curl/8.7.1",
+    "referer": null
+  }
+}
+[2025-09-17 17:53:18:5318] [33mwarn[39m: [33mMQTT connection closed[39m
+{
+  "metadata": {}
+}
+[2025-09-17 17:53:19:5319] [35mhttp[39m: [35mPOST /api/auth/login[39m
+{
+  "metadata": {
+    "category": "api",
+    "method": "POST",
+    "endpoint": "/api/auth/login",
+    "statusCode": 200,
+    "responseTime": 452,
+    "requestId": "1758111798673-9yum1nxxl",
+    "responseSize": "554",
+    "ip": "::1",
+    "userAgent": "curl/8.7.1",
+    "referer": null
+  }
+}
+[2025-09-17 17:53:23:5323] [32minfo[39m: [32mMQTT attempting to reconnect[39m
+{
+  "metadata": {
+    "attempt": 1,
+    "maxAttempts": 5
+  }
+}
+[2025-09-17 17:53:24:5324] [33mwarn[39m: [33mMQTT connection closed[39m
+{
+  "metadata": {}
+}
+[2025-09-17 17:53:29:5329] [32minfo[39m: [32mMQTT attempting to reconnect[39m
+{
+  "metadata": {
+    "attempt": 2,
+    "maxAttempts": 5
+  }
+}
+[2025-09-17 17:53:29:5329] [33mwarn[39m: [33mMQTT connection closed[39m
+{
+  "metadata": {}
+}
+[2025-09-17 17:53:30:5330] [35mhttp[39m: [35mIncoming request[39m
+{
+  "metadata": {
+    "requestId": "1758111810720-mssihvk1e",
+    "method": "GET",
+    "url": "/api/subscriptions?page=1&limit=20",
+    "query": {
+      "page": "1",
+      "limit": "20"
+    },
+    "ip": "::1",
+    "userAgent": "curl/8.7.1",
+    "referer": null
+  }
+}
+[2025-09-17 17:53:31:5331] [35mhttp[39m: [35mGET /api/subscriptions?page=1&limit=20[39m
+{
+  "metadata": {
+    "category": "api",
+    "method": "GET",
+    "endpoint": "/api/subscriptions?page=1&limit=20",
+    "statusCode": 200,
+    "responseTime": 379,
+    "requestId": "1758111810720-mssihvk1e",
+    "responseSize": "80",
+    "ip": "::1",
+    "userAgent": "curl/8.7.1",
+    "referer": null
+  }
+}
+[2025-09-17 17:53:34:5334] [32minfo[39m: [32mMQTT attempting to reconnect[39m
+{
+  "metadata": {
+    "attempt": 3,
+    "maxAttempts": 5
+  }
+}
+[2025-09-17 17:53:34:5334] [33mwarn[39m: [33mMQTT connection closed[39m
+{
+  "metadata": {}
+}
+[2025-09-17 17:53:39:5339] [32minfo[39m: [32mMQTT attempting to reconnect[39m
+{
+  "metadata": {
+    "attempt": 4,
+    "maxAttempts": 5
+  }
+}
+[2025-09-17 17:53:40:5340] [33mwarn[39m: [33mMQTT connection closed[39m
+{
+  "metadata": {}
+}
+[2025-09-17 17:53:40:5340] [35mhttp[39m: [35mIncoming request[39m
+{
+  "metadata": {
+    "requestId": "1758111820214-uztggtw42",
+    "method": "POST",
+    "url": "/api/subscriptions/payments/session",
+    "query": {},
+    "ip": "::1",
+    "userAgent": "curl/8.7.1",
+    "referer": null
+  }
+}
+[2025-09-17 17:53:42:5342] [35mhttp[39m: [35mPOST /api/subscriptions/payments/session[39m
+{
+  "metadata": {
+    "category": "api",
+    "method": "POST",
+    "endpoint": "/api/subscriptions/payments/session",
+    "statusCode": 201,
+    "responseTime": 2762,
+    "requestId": "1758111820214-uztggtw42",
+    "responseSize": "716",
+    "ip": "::1",
+    "userAgent": "curl/8.7.1",
+    "referer": null
+  }
+}
+[2025-09-17 17:53:42:5342] [33mwarn[39m: [33mPerformance: Slow request detected[39m
+{
+  "metadata": {
+    "category": "performance",
+    "duration": 2762,
+    "slow": true,
+    "requestId": "1758111820214-uztggtw42",
+    "method": "POST",
+    "url": "/api/subscriptions/payments/session",
+    "statusCode": 201
+  }
+}
+[2025-09-17 17:53:45:5345] [32minfo[39m: [32mMQTT attempting to reconnect[39m
+{
+  "metadata": {
+    "attempt": 5,
+    "maxAttempts": 5
+  }
+}
+[2025-09-17 17:53:45:5345] [31merror[39m: [31mMax MQTT reconnect attempts reached, stopping client[39m
+{
+  "metadata": {}
+}
+[2025-09-17 17:53:45:5345] [33mwarn[39m: [33mMQTT connection closed[39m
+{
+  "metadata": {}
+}
+[2025-09-17 17:53:55:5355] [35mhttp[39m: [35mIncoming request[39m
+{
+  "metadata": {
+    "requestId": "1758111835320-k7bg905ps",
+    "method": "GET",
+    "url": "/payments/cashfree/return?order_id=TXN_MFNYDVDT_UHG2P5QM13N&payment_session_id=session_3J2QPeZy7pjk_VbkACmSCwhmIIf05SWUQLC2lBe8GK-M5nNUB0Mp2HX8IMQDnICVmLFwnz3jyPBdTqmYwIbeacNJJ3KcipXqLWzjrAT81j1rsRaNgSXUFaQzgyqGDApaymentpayment&txStatus=SUCCESS",
+    "query": {
+      "order_id": "TXN_MFNYDVDT_UHG2P5QM13N",
+      "payment_session_id": "session_3J2QPeZy7pjk_VbkACmSCwhmIIf05SWUQLC2lBe8GK-M5nNUB0Mp2HX8IMQDnICVmLFwnz3jyPBdTqmYwIbeacNJJ3KcipXqLWzjrAT81j1rsRaNgSXUFaQzgyqGDApaymentpayment",
+      "txStatus": "SUCCESS"
+    },
+    "ip": "::1",
+    "userAgent": "curl/8.7.1",
+    "referer": null
+  }
+}
+[2025-09-17 17:53:57:5357] [35mhttp[39m: [35mGET /payments/cashfree/return?order_id=TXN_MFNYDVDT_UHG2P5QM13N&payment_session_id=session_3J2QPeZy7pjk_VbkACmSCwhmIIf05SWUQLC2lBe8GK-M5nNUB0Mp2HX8IMQDnICVmLFwnz3jyPBdTqmYwIbeacNJJ3KcipXqLWzjrAT81j1rsRaNgSXUFaQzgyqGDApaymentpayment&txStatus=SUCCESS[39m
+{
+  "metadata": {
+    "category": "api",
+    "method": "GET",
+    "endpoint": "/payments/cashfree/return?order_id=TXN_MFNYDVDT_UHG2P5QM13N&payment_session_id=session_3J2QPeZy7pjk_VbkACmSCwhmIIf05SWUQLC2lBe8GK-M5nNUB0Mp2HX8IMQDnICVmLFwnz3jyPBdTqmYwIbeacNJJ3KcipXqLWzjrAT81j1rsRaNgSXUFaQzgyqGDApaymentpayment&txStatus=SUCCESS",
+    "statusCode": 200,
+    "responseTime": 2447,
+    "requestId": "1758111835320-k7bg905ps",
+    "responseSize": "2131",
+    "ip": "::1",
+    "userAgent": "curl/8.7.1",
+    "referer": null
+  }
+}
+[2025-09-17 17:53:57:5357] [33mwarn[39m: [33mPerformance: Slow request detected[39m
+{
+  "metadata": {
+    "category": "performance",
+    "duration": 2447,
+    "slow": true,
+    "requestId": "1758111835320-k7bg905ps",
+    "method": "GET",
+    "url": "/payments/cashfree/return?order_id=TXN_MFNYDVDT_UHG2P5QM13N&payment_session_id=session_3J2QPeZy7pjk_VbkACmSCwhmIIf05SWUQLC2lBe8GK-M5nNUB0Mp2HX8IMQDnICVmLFwnz3jyPBdTqmYwIbeacNJJ3KcipXqLWzjrAT81j1rsRaNgSXUFaQzgyqGDApaymentpayment&txStatus=SUCCESS",
+    "statusCode": 200
+  }
+}
+[2025-09-17 17:54:10:5410] [35mhttp[39m: [35mIncoming request[39m
+{
+  "metadata": {
+    "requestId": "1758111850134-w0nx0ueh3",
+    "method": "GET",
+    "url": "/api/subscriptions/current",
+    "query": {},
+    "ip": "::1",
+    "userAgent": "curl/8.7.1",
+    "referer": null
+  }
+}
+[2025-09-17 17:54:10:5410] [35mhttp[39m: [35mGET /api/subscriptions/current[39m
+{
+  "metadata": {
+    "category": "api",
+    "method": "GET",
+    "endpoint": "/api/subscriptions/current",
+    "statusCode": 403,
+    "responseTime": 5,
+    "requestId": "1758111850134-w0nx0ueh3",
+    "responseSize": "9",
+    "ip": "::1",
+    "userAgent": "curl/8.7.1",
+    "referer": null
+  }
+}
+[2025-09-17 17:54:10:5410] [33mwarn[39m: [33mHTTP 403[39m
+{
+  "metadata": {
+    "requestId": "1758111850134-w0nx0ueh3",
+    "method": "GET",
+    "url": "/api/subscriptions/current",
+    "statusCode": 403,
+    "duration": 5,
+    "ip": "::1",
+    "userAgent": "curl/8.7.1",
+    "referer": null
+  }
+}
+[2025-09-17 17:54:35:5435] [35mhttp[39m: [35mIncoming request[39m
+{
+  "metadata": {
+    "requestId": "1758111875272-kra7q4b57",
+    "method": "GET",
+    "url": "/api/subscriptions/current",
+    "query": {},
+    "ip": "::1",
+    "userAgent": "curl/8.7.1",
+    "referer": null
+  }
+}
+[2025-09-17 17:54:35:5435] [35mhttp[39m: [35mGET /api/subscriptions/current[39m
+{
+  "metadata": {
+    "category": "api",
+    "method": "GET",
+    "endpoint": "/api/subscriptions/current",
+    "statusCode": 403,
+    "responseTime": 4,
+    "requestId": "1758111875272-kra7q4b57",
+    "responseSize": "9",
+    "ip": "::1",
+    "userAgent": "curl/8.7.1",
+    "referer": null
+  }
+}
+[2025-09-17 17:54:35:5435] [33mwarn[39m: [33mHTTP 403[39m
+{
+  "metadata": {
+    "requestId": "1758111875272-kra7q4b57",
+    "method": "GET",
+    "url": "/api/subscriptions/current",
+    "statusCode": 403,
+    "duration": 4,
+    "ip": "::1",
+    "userAgent": "curl/8.7.1",
+    "referer": null
+  }
+}
+[2025-09-17 17:54:44:5444] [35mhttp[39m: [35mIncoming request[39m
+{
+  "metadata": {
+    "requestId": "1758111884008-sa6kunas0",
+    "method": "GET",
+    "url": "/api/subscriptions/payments",
+    "query": {},
+    "ip": "::1",
+    "userAgent": "curl/8.7.1",
+    "referer": null
+  }
+}
+[2025-09-17 17:54:44:5444] [35mhttp[39m: [35mGET /api/subscriptions/payments[39m
+{
+  "metadata": {
+    "category": "api",
+    "method": "GET",
+    "endpoint": "/api/subscriptions/payments",
+    "statusCode": 403,
+    "responseTime": 4,
+    "requestId": "1758111884008-sa6kunas0",
+    "responseSize": "9",
+    "ip": "::1",
+    "userAgent": "curl/8.7.1",
+    "referer": null
+  }
+}
+[2025-09-17 17:54:44:5444] [33mwarn[39m: [33mHTTP 403[39m
+{
+  "metadata": {
+    "requestId": "1758111884008-sa6kunas0",
+    "method": "GET",
+    "url": "/api/subscriptions/payments",
+    "statusCode": 403,
+    "duration": 4,
+    "ip": "::1",
+    "userAgent": "curl/8.7.1",
+    "referer": null
+  }
+}
+[2025-09-17 17:54:56:5456] [32minfo[39m: [32mService shutting down[39m
+{
+  "metadata": {
+    "category": "system",
+    "service": "smart-parking-backend",
+    "reason": "Received SIGTERM"
+  }
+}

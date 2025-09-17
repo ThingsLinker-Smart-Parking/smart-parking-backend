@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(timeout 10s npm run dev)",
+      "Bash(lsof:*)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(kill:*)",
+      "Bash(node:*)",
+      "Read(//Users/chetanmahajan/Documents/nodejs_backend/**)",
+      "Bash(flutter packages pub run build_runner build:*)",
+      "Bash(flutter run:*)",
+      "Bash(nc:*)",
+      "Bash(/dev/null)",
+      "Bash(flutter clean:*)",
+      "Bash(flutter pub:*)",
+      "Bash(tree:*)",
+      "Bash(xargs kill:*)",
+      "Read(//dev/**)",
+      "Bash(tr:*)",
+      "Bash(git checkout -- src/services/subscriptionService.ts)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
