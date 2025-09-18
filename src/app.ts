@@ -345,6 +345,8 @@ app.all("/payments/cashfree/return", async (req, res) => {
   const isSuccess = flowStatus === "SUCCESS" || cashfreeIndicatesSuccess;
   const redirectPath = isSuccess ? "/admin/dashboard" : "/admin/subscribe-plan";
   const deepLinkUrl = `${flutterAppScheme}:${redirectPath}?${isSuccess ? 'payment_success=true' : 'payment_failed=true'}&order_id=${orderId}&status=${isSuccess ? 'success' : 'failed'}`;
+  const webRedirectPath = isSuccess ? '/#/admin/dashboard' : '/#/admin/subscribe-plan';
+  const redirectDelaySeconds = 5;
 
   return res.status(200).send(`<!DOCTYPE html>
 <html>
@@ -355,7 +357,7 @@ app.all("/payments/cashfree/return", async (req, res) => {
 </head>
 <body>
     <h2>${isSuccess ? '✅ Payment Successful!' : '❌ Payment Failed'}</h2>
-    <p>${isSuccess ? 'Redirecting to dashboard...' : 'Redirecting to subscription page...'}</p>
+    <p>${isSuccess ? 'Redirecting to dashboard in 5 seconds...' : 'Redirecting to subscription page in 5 seconds...'}</p>
     <p>Order ID: ${orderId}</p>
 
     <script>
@@ -398,11 +400,20 @@ app.all("/payments/cashfree/return", async (req, res) => {
                 } catch (e) {
                     console.log('Cannot close window');
                 }
-            }, 3000);
+            }, 5000);
         }
 
         // Execute immediately
         redirectToApp();
+
+        // Fallback redirect for web deployments
+        setTimeout(() => {
+            try {
+                window.location.href = '${webRedirectPath}?order_id=${orderId}&status=${isSuccess ? 'success' : 'failed'}';
+            } catch (e) {
+                console.log('Fallback redirect failed', e);
+            }
+        }, ${redirectDelaySeconds * 1000});
     </script>
 </body>
 </html>`);
