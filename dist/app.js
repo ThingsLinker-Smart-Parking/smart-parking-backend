@@ -257,6 +257,10 @@ app.all("/payments/cashfree/return", async (req, res) => {
         const statusRaw = getValue("txStatus", "transaction_status", "status");
         let displayStatus = statusRaw || "PENDING";
         let flowStatus = "PENDING";
+        // Check Cashfree status first - trust their response for immediate redirect
+        const cashfreeIndicatesSuccess = statusRaw &&
+            (statusRaw.toUpperCase() === "SUCCESS" ||
+                statusRaw.toUpperCase() === "PAID");
         if (!orderId && !paymentSessionId) {
             flowStatus = "ERROR";
         }
@@ -276,19 +280,70 @@ app.all("/payments/cashfree/return", async (req, res) => {
                 flowStatus = "ERROR";
             }
         }
-        // Simple direct redirect like other websites
-        if (flowStatus === "SUCCESS") {
-            // Success - redirect to dashboard with success parameters
-            const redirectUrl = `${flutterAppScheme}://admin/dashboard?payment_success=true&order_id=${orderId}&status=success`;
-            console.log('Redirecting to dashboard:', redirectUrl);
-            return res.redirect(302, redirectUrl);
+        // Return HTML page with JavaScript to handle Flutter app communication
+        const isSuccess = flowStatus === "SUCCESS" || cashfreeIndicatesSuccess;
+        const redirectPath = isSuccess ? "/admin/dashboard" : "/admin/subscribe-plan";
+        const deepLinkUrl = `${flutterAppScheme}:${redirectPath}?${isSuccess ? 'payment_success=true' : 'payment_failed=true'}&order_id=${orderId}&status=${isSuccess ? 'success' : 'failed'}`;
+        return res.status(200).send(`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>${isSuccess ? 'Payment Successful' : 'Payment Failed'}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+    <h2>${isSuccess ? '✅ Payment Successful!' : '❌ Payment Failed'}</h2>
+    <p>${isSuccess ? 'Redirecting to dashboard...' : 'Redirecting to subscription page...'}</p>
+    <p>Order ID: ${orderId}</p>
+
+    <script>
+        // Try multiple methods to communicate with Flutter app
+        function redirectToApp() {
+            const deepLink = '${deepLinkUrl}';
+
+            // Method 1: Try deep link
+            try {
+                window.location.href = deepLink;
+            } catch (e) {
+                console.log('Deep link failed:', e);
+            }
+
+            // Method 2: Post message to parent (for WebView)
+            try {
+                const message = {
+                    type: 'paymentResult',
+                    success: ${isSuccess},
+                    orderId: '${orderId}',
+                    status: '${isSuccess ? 'success' : 'failed'}',
+                    redirectPath: '${redirectPath}'
+                };
+
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage(message, '*');
+                }
+
+                if (window.opener && !window.opener.closed) {
+                    window.opener.postMessage(message, '*');
+                }
+            } catch (e) {
+                console.log('PostMessage failed:', e);
+            }
+
+            // Method 3: Try to close window if it's a popup
+            setTimeout(() => {
+                try {
+                    window.close();
+                } catch (e) {
+                    console.log('Cannot close window');
+                }
+            }, 3000);
         }
-        else {
-            // Failure - redirect to subscription page with error parameters
-            const redirectUrl = `${flutterAppScheme}://admin/subscribe-plan?payment_failed=true&order_id=${orderId}&status=failed`;
-            console.log('Redirecting to subscription page:', redirectUrl);
-            return res.redirect(302, redirectUrl);
-        }
+
+        // Execute immediately
+        redirectToApp();
+    </script>
+</body>
+</html>`);
     }
     catch (error) {
         console.error('Error in Cashfree return handler:', error);
