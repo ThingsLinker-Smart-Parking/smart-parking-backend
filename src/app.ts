@@ -268,10 +268,10 @@ app.all("/payments/cashfree/return", async (req, res) => {
   const forwardedHost = req.get("x-forwarded-host");
   const requestHost = forwardedHost ?? req.get("host");
   const protocol = forwardedProto?.split(",")[0]?.trim() || req.protocol;
-  // Frontend application URLs
-  const frontendBaseUrl = process.env.FRONTEND_URL || "https://smart-parking-backend-production-5449.up.railway.app";
-  const subscriptionPath = "/admin/subscribe-plan";
-  const dashboardPath = "/admin/dashboard";
+  // Flutter app deep links
+  const flutterAppScheme = process.env.FLUTTER_APP_SCHEME || "smartparking";
+  const subscriptionPath = "://admin/subscribe-plan";
+  const dashboardPath = "://admin/dashboard";
 
   const getValue = (...keys: string[]): string => {
     for (const key of keys) {
@@ -379,9 +379,9 @@ app.all("/payments/cashfree/return", async (req, res) => {
 
   const queryString = searchParams.toString();
   const resolveUrl = (path: string) => {
-    const base = frontendBaseUrl;
-    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-    return `${base}${normalizedPath}${queryString ? `?${queryString}` : ""}`;
+    // For Flutter deep links: smartparking://admin/dashboard?params
+    const deepLink = `${flutterAppScheme}${path}${queryString ? `?${queryString}` : ""}`;
+    return deepLink;
   };
 
   const upperStatus = (displayStatus || "").toUpperCase();
@@ -439,10 +439,34 @@ app.all("/payments/cashfree/return", async (req, res) => {
         .card h1 { font-size: 22px; margin: 0 0 12px; }
         .card p { font-size: 15px; margin: 0; opacity: 0.82; line-height: 1.45; }
         .meta { margin-top: 20px; font-size: 13px; color: #94a3b8; word-break: break-word; }
+
+        /* Alert Dialog Styles */
+        .alert-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .alert-dialog { background: #1e293b; border: 2px solid #10b981; border-radius: 12px; padding: 24px; max-width: 400px; text-align: center; box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6); }
+        .alert-dialog.success { border-color: #10b981; }
+        .alert-dialog.error { border-color: #ef4444; }
+        .alert-icon { font-size: 48px; margin-bottom: 16px; }
+        .alert-icon.success { color: #10b981; }
+        .alert-icon.error { color: #ef4444; }
+        .alert-title { font-size: 20px; font-weight: bold; margin-bottom: 8px; }
+        .alert-message { font-size: 14px; opacity: 0.9; margin-bottom: 16px; }
+        .countdown { font-size: 12px; color: #94a3b8; }
+        .hidden { display: none; }
       </style>
     </head>
     <body>
-      <div class="card">
+      <!-- Alert Dialog for Success/Error -->
+      <div id="alertOverlay" class="alert-overlay hidden">
+        <div id="alertDialog" class="alert-dialog">
+          <div id="alertIcon" class="alert-icon">✅</div>
+          <div id="alertTitle" class="alert-title">Payment Successful!</div>
+          <div id="alertMessage" class="alert-message">Your subscription has been activated successfully.</div>
+          <div id="countdown" class="countdown">Redirecting to dashboard in <span id="countdownNumber">5</span> seconds...</div>
+        </div>
+      </div>
+
+      <!-- Main Card (Hidden when alert is shown) -->
+      <div id="mainCard" class="card">
         <h1>${headline}</h1>
         <p>${description}</p>
         <div class="meta">Status: <strong>${upperStatus || "UNKNOWN"}</strong></div>
@@ -469,15 +493,79 @@ app.all("/payments/cashfree/return", async (req, res) => {
             targetUrl = payload.subscriptionUrl;
           }
 
-          if (targetUrl) {
-            setTimeout(function () {
-              try { window.location.replace(targetUrl); } catch (_) {}
-            }, 1000); // Reduced from 2000ms to 1000ms for faster redirect
-          } else {
-            setTimeout(function () {
-              try { window.close(); } catch (_) {}
-            }, 1500); // Reduced from 2500ms to 1500ms
+          function showAlert() {
+            var alertOverlay = document.getElementById('alertOverlay');
+            var alertDialog = document.getElementById('alertDialog');
+            var alertIcon = document.getElementById('alertIcon');
+            var alertTitle = document.getElementById('alertTitle');
+            var alertMessage = document.getElementById('alertMessage');
+            var countdown = document.getElementById('countdown');
+            var countdownNumber = document.getElementById('countdownNumber');
+            var mainCard = document.getElementById('mainCard');
+
+            if (payload && payload.success) {
+              // Success Alert
+              alertIcon.textContent = '✅';
+              alertIcon.className = 'alert-icon success';
+              alertDialog.className = 'alert-dialog success';
+              alertTitle.textContent = 'Payment Successful!';
+              alertMessage.textContent = 'Your subscription has been activated successfully.';
+              countdown.style.display = 'block';
+
+              // Hide main card and show alert
+              mainCard.style.display = 'none';
+              alertOverlay.classList.remove('hidden');
+
+              // Start countdown
+              var timeLeft = 5;
+              var countdownInterval = setInterval(function() {
+                timeLeft--;
+                countdownNumber.textContent = timeLeft;
+
+                if (timeLeft <= 0) {
+                  clearInterval(countdownInterval);
+                  redirectToFlutterApp();
+                }
+              }, 1000);
+            } else {
+              // Error Alert
+              alertIcon.textContent = '❌';
+              alertIcon.className = 'alert-icon error';
+              alertDialog.className = 'alert-dialog error';
+              alertTitle.textContent = 'Payment Failed!';
+              alertMessage.textContent = payload.message || 'The payment could not be processed. Please try again.';
+              countdown.style.display = 'none';
+
+              // Hide main card and show alert
+              mainCard.style.display = 'none';
+              alertOverlay.classList.remove('hidden');
+
+              // Redirect after 3 seconds for failed payments
+              setTimeout(redirectToFlutterApp, 3000);
+            }
           }
+
+          function redirectToFlutterApp() {
+            if (targetUrl) {
+              try {
+                // Try to open the Flutter app with deep link
+                window.location.href = targetUrl;
+
+                // Fallback: try to close the window after a short delay
+                setTimeout(function() {
+                  try { window.close(); } catch (_) {}
+                }, 2000);
+              } catch (err) {
+                console.warn('Failed to redirect to Flutter app:', err);
+                try { window.close(); } catch (_) {}
+              }
+            } else {
+              try { window.close(); } catch (_) {}
+            }
+          }
+
+          // Show alert immediately
+          setTimeout(showAlert, 500);
         })();
       </script>
     </body>
