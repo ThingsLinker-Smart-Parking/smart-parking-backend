@@ -34,6 +34,8 @@ dotenv.config();
 
 const app = express();
 
+app.set("trust proxy", process.env.TRUST_PROXY ?? "1");
+
 // Swagger setup
 const specs = swaggerJsdoc(swaggerOptions);
 
