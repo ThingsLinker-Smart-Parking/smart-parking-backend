@@ -394,62 +394,67 @@ app.all("/payments/cashfree/return", async (req, res) => {
         .card h1 { font-size: 22px; margin: 0 0 12px; }
         .card p { font-size: 15px; margin: 0; opacity: 0.82; line-height: 1.45; }
         .meta { margin-top: 20px; font-size: 13px; color: #94a3b8; word-break: break-word; }
-
-        /* Alert Dialog Styles */
-        .alert-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .alert-dialog { background: #1e293b; border: 2px solid #10b981; border-radius: 12px; padding: 24px; max-width: 400px; text-align: center; box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6); }
-        .alert-dialog.success { border-color: #10b981; }
-        .alert-dialog.error { border-color: #ef4444; }
-        .alert-icon { font-size: 48px; margin-bottom: 16px; }
-        .alert-icon.success { color: #10b981; }
-        .alert-icon.error { color: #ef4444; }
-        .alert-title { font-size: 20px; font-weight: bold; margin-bottom: 8px; }
-        .alert-message { font-size: 14px; opacity: 0.9; margin-bottom: 16px; }
-        .countdown { font-size: 12px; color: #94a3b8; }
-        .hidden { display: none; }
-
-        /* Fallback button styles */
-        .fallback-button { margin-top: 16px; padding: 12px 24px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; display: inline-block; }
-        .fallback-button:hover { background: #059669; }
-        .fallback-info { margin-top: 12px; font-size: 12px; color: #94a3b8; }
+        .loading { text-align: center; }
+        .spinner { border: 3px solid #374151; border-top: 3px solid #10b981; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .redirect-message { font-size: 14px; color: #94a3b8; margin-top: 16px; }
       </style>
     </head>
     <body>
-      <!-- Alert Dialog for Success/Error -->
-      <div id="alertOverlay" class="alert-overlay hidden">
-        <div id="alertDialog" class="alert-dialog">
-          <div id="alertIcon" class="alert-icon">✅</div>
-          <div id="alertTitle" class="alert-title">Payment Successful!</div>
-          <div id="alertMessage" class="alert-message">Your subscription has been activated successfully.</div>
-          <div id="countdown" class="countdown">Redirecting to dashboard in <span id="countdownNumber">5</span> seconds...</div>
-          <div id="fallbackSection" class="hidden">
-            <a id="fallbackButton" href="#" class="fallback-button">Open Dashboard</a>
-            <div class="fallback-info">Click the button above if automatic redirect doesn't work</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Main Card (Hidden when alert is shown) -->
-      <div id="mainCard" class="card">
+      <div class="card">
         <h1>${safeHeadline}</h1>
         <p>${safeDescription}</p>
         <div class="meta">Status: <strong>${safeStatus}</strong></div>
         ${safeOrderId ? `<div class="meta">Order ID: ${safeOrderId}</div>` : ""}
+
+        <div class="loading">
+          <div class="spinner"></div>
+          <div class="redirect-message">Redirecting to app...</div>
+        </div>
       </div>
       <script>
         (function () {
           var payload = ${payloadJson};
-          var message = { type: 'cashfreeResult', data: payload };
+
+          // Debug logging
+          console.log('Payment return payload:', payload);
+
+          // Send message to Flutter app via postMessage (for WebView)
+          var message = {
+            type: 'cashfreePaymentResult',
+            data: {
+              success: payload.success,
+              status: payload.status,
+              cashfreeStatus: payload.cashfreeStatus,
+              orderId: payload.orderId,
+              message: payload.message,
+              timestamp: new Date().toISOString()
+            }
+          };
+
+          // Try to communicate with Flutter WebView
           try {
+            // For Flutter WebView
+            if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+              window.flutter_inappwebview.callHandler('paymentResult', message.data);
+            }
+
+            // For browser/popup scenarios
             if (window.opener && !window.opener.closed) {
               window.opener.postMessage(message, '*');
             } else if (window.parent && window.parent !== window) {
               window.parent.postMessage(message, '*');
             }
+
+            // For mobile app communication
+            if (window.ReactNativeWebView) {
+              window.ReactNativeWebView.postMessage(JSON.stringify(message));
+            }
           } catch (err) {
-            console.warn('cashfreeResult postMessage failed', err);
+            console.warn('Message communication failed:', err);
           }
 
+          // Immediate redirect to Flutter app with deep link
           var targetUrl = null;
           if (payload && payload.success && payload.dashboardUrl) {
             targetUrl = payload.dashboardUrl;
@@ -457,117 +462,34 @@ app.all("/payments/cashfree/return", async (req, res) => {
             targetUrl = payload.subscriptionUrl;
           }
 
-          function showAlert() {
-            var alertOverlay = document.getElementById('alertOverlay');
-            var alertDialog = document.getElementById('alertDialog');
-            var alertIcon = document.getElementById('alertIcon');
-            var alertTitle = document.getElementById('alertTitle');
-            var alertMessage = document.getElementById('alertMessage');
-            var countdown = document.getElementById('countdown');
-            var countdownNumber = document.getElementById('countdownNumber');
-            var mainCard = document.getElementById('mainCard');
-            var fallbackSection = document.getElementById('fallbackSection');
-            var fallbackButton = document.getElementById('fallbackButton');
-
-            if (payload && payload.success) {
-              // Success Alert
-              alertIcon.textContent = '✅';
-              alertIcon.className = 'alert-icon success';
-              alertDialog.className = 'alert-dialog success';
-              alertTitle.textContent = 'Payment Successful!';
-              alertMessage.textContent = 'Your subscription has been activated successfully.';
-              countdown.style.display = 'block';
-
-              // Hide main card and show alert
-              mainCard.style.display = 'none';
-              alertOverlay.classList.remove('hidden');
-
-              // Set fallback button URL
-              if (fallbackButton && targetUrl) {
-                fallbackButton.href = targetUrl;
-              }
-
-              // Start countdown
-              var timeLeft = 5;
-              var countdownInterval = setInterval(function() {
-                timeLeft--;
-                countdownNumber.textContent = timeLeft;
-
-                if (timeLeft <= 0) {
-                  clearInterval(countdownInterval);
-                  redirectToFlutterApp();
-                }
-              }, 1000);
-
-              // Show fallback button after 3 seconds
-              setTimeout(function() {
-                if (fallbackSection) {
-                  fallbackSection.classList.remove('hidden');
-                }
-              }, 3000);
-            } else {
-              // Error Alert
-              alertIcon.textContent = '❌';
-              alertIcon.className = 'alert-icon error';
-              alertDialog.className = 'alert-dialog error';
-              alertTitle.textContent = 'Payment Failed!';
-              alertMessage.textContent = payload.message || 'The payment could not be processed. Please try again.';
-              countdown.style.display = 'none';
-
-              // Hide main card and show alert
-              mainCard.style.display = 'none';
-              alertOverlay.classList.remove('hidden');
-
-              // Redirect after 3 seconds for failed payments
-              setTimeout(redirectToFlutterApp, 3000);
-            }
-          }
-
           function redirectToFlutterApp() {
             if (targetUrl) {
               try {
-                // Try to open the Flutter app with deep link
+                console.log('Redirecting to Flutter app:', targetUrl);
                 window.location.href = targetUrl;
 
-                // Fallback: try to close the window after a short delay
+                // Fallback: close window after delay
                 setTimeout(function() {
                   try { window.close(); } catch (_) {}
                 }, 2000);
               } catch (err) {
-                console.warn('Failed to redirect to Flutter app:', err);
+                console.error('Redirect failed:', err);
                 try { window.close(); } catch (_) {}
               }
             } else {
+              console.log('No target URL, closing window');
               try { window.close(); } catch (_) {}
             }
           }
 
-          // Debug logging
-          console.log('Payment return payload:', payload);
-          console.log('Target URL:', targetUrl);
+          // Immediate redirect (no HTML dialog)
+          setTimeout(redirectToFlutterApp, 1000);
 
-          // Show alert immediately
-          setTimeout(showAlert, 500);
-
-          // Backup redirect mechanism in case alert fails
-          if (payload && payload.success && targetUrl) {
-            setTimeout(function() {
-              console.log('Backup redirect triggered');
-              try {
-                window.location.href = targetUrl;
-              } catch (err) {
-                console.error('Backup redirect failed:', err);
-                // Try opening in parent window as final fallback
-                try {
-                  if (window.parent && window.parent !== window) {
-                    window.parent.location.href = targetUrl;
-                  }
-                } catch (parentErr) {
-                  console.error('Parent redirect failed:', parentErr);
-                }
-              }
-            }, 7000); // 7 seconds as final backup
-          }
+          // Backup redirect
+          setTimeout(function() {
+            console.log('Backup redirect triggered');
+            redirectToFlutterApp();
+          }, 3000);
         })();
       </script>
     </body>
