@@ -538,7 +538,13 @@ export class SubscriptionService {
 
     const hintedStatus = (statusHint || "").toUpperCase();
 
-    const executeFinalize = async () => {
+    const executeFinalize = async (): Promise<{
+      status: "SUCCESS" | "FAILED" | "PENDING" | "NOT_FOUND" | "ERROR";
+      payment?: Payment | null;
+      subscription?: Subscription | null;
+      cashfreeStatus?: string;
+      message?: string;
+    }> => {
       type InterimResult =
         | { outcome: "NOT_FOUND"; status: string; message: string }
         | {
