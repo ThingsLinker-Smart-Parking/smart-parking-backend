@@ -20,7 +20,8 @@
       "Bash(tr:*)",
       "Bash(git checkout -- src/services/subscriptionService.ts)",
       "Bash(npm run build:*)",
-      "Bash(PORT=3001 npm run dev)"
+      "Bash(PORT=3001 npm run dev)",
+      "Bash(PORT=3002 npm run dev)"
     ],
     "deny": [],
     "ask": []

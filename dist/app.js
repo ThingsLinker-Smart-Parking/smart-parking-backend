@@ -378,6 +378,9 @@ app.all("/payments/cashfree/return", async (req, res) => {
         const safeDescription = (description || "Processing payment result...").replace(/[<>&"']/g, '');
         const safeStatus = (upperStatus || "UNKNOWN").replace(/[<>&"']/g, '');
         const safeOrderId = orderId ? orderId.replace(/[<>&"']/g, '') : '';
+        // Set less restrictive CSP for payment return page to allow inline scripts
+        res.removeHeader('Content-Security-Policy');
+        res.setHeader('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self';");
         return res.status(200).send(`<!DOCTYPE html>
   <html lang="en">
     <head>
@@ -404,6 +407,11 @@ app.all("/payments/cashfree/return", async (req, res) => {
         .alert-message { font-size: 14px; opacity: 0.9; margin-bottom: 16px; }
         .countdown { font-size: 12px; color: #94a3b8; }
         .hidden { display: none; }
+
+        /* Fallback button styles */
+        .fallback-button { margin-top: 16px; padding: 12px 24px; background: #10b981; color: white; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; display: inline-block; }
+        .fallback-button:hover { background: #059669; }
+        .fallback-info { margin-top: 12px; font-size: 12px; color: #94a3b8; }
       </style>
     </head>
     <body>
@@ -414,6 +422,10 @@ app.all("/payments/cashfree/return", async (req, res) => {
           <div id="alertTitle" class="alert-title">Payment Successful!</div>
           <div id="alertMessage" class="alert-message">Your subscription has been activated successfully.</div>
           <div id="countdown" class="countdown">Redirecting to dashboard in <span id="countdownNumber">5</span> seconds...</div>
+          <div id="fallbackSection" class="hidden">
+            <a id="fallbackButton" href="#" class="fallback-button">Open Dashboard</a>
+            <div class="fallback-info">Click the button above if automatic redirect doesn't work</div>
+          </div>
         </div>
       </div>
 
@@ -454,6 +466,8 @@ app.all("/payments/cashfree/return", async (req, res) => {
             var countdown = document.getElementById('countdown');
             var countdownNumber = document.getElementById('countdownNumber');
             var mainCard = document.getElementById('mainCard');
+            var fallbackSection = document.getElementById('fallbackSection');
+            var fallbackButton = document.getElementById('fallbackButton');
 
             if (payload && payload.success) {
               // Success Alert
@@ -468,6 +482,11 @@ app.all("/payments/cashfree/return", async (req, res) => {
               mainCard.style.display = 'none';
               alertOverlay.classList.remove('hidden');
 
+              // Set fallback button URL
+              if (fallbackButton && targetUrl) {
+                fallbackButton.href = targetUrl;
+              }
+
               // Start countdown
               var timeLeft = 5;
               var countdownInterval = setInterval(function() {
@@ -479,6 +498,13 @@ app.all("/payments/cashfree/return", async (req, res) => {
                   redirectToFlutterApp();
                 }
               }, 1000);
+
+              // Show fallback button after 3 seconds
+              setTimeout(function() {
+                if (fallbackSection) {
+                  fallbackSection.classList.remove('hidden');
+                }
+              }, 3000);
             } else {
               // Error Alert
               alertIcon.textContent = '❌';
@@ -516,8 +542,32 @@ app.all("/payments/cashfree/return", async (req, res) => {
             }
           }
 
+          // Debug logging
+          console.log('Payment return payload:', payload);
+          console.log('Target URL:', targetUrl);
+
           // Show alert immediately
           setTimeout(showAlert, 500);
+
+          // Backup redirect mechanism in case alert fails
+          if (payload && payload.success && targetUrl) {
+            setTimeout(function() {
+              console.log('Backup redirect triggered');
+              try {
+                window.location.href = targetUrl;
+              } catch (err) {
+                console.error('Backup redirect failed:', err);
+                // Try opening in parent window as final fallback
+                try {
+                  if (window.parent && window.parent !== window) {
+                    window.parent.location.href = targetUrl;
+                  }
+                } catch (parentErr) {
+                  console.error('Parent redirect failed:', parentErr);
+                }
+              }
+            }, 7000); // 7 seconds as final backup
+          }
         })();
       </script>
     </body>
