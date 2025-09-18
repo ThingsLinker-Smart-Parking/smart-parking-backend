@@ -189,176 +189,201 @@ app.get("/", (_, res) => {
     res.redirect("/api-docs");
 });
 app.all("/payments/cashfree/return", async (req, res) => {
-    if (req.method === "HEAD") {
-        return res.status(200).end();
-    }
-    const payload = {};
-    const assignEntries = (source) => {
-        if (!source) {
-            return;
+    try {
+        if (req.method === "HEAD") {
+            return res.status(200).end();
         }
-        for (const [key, value] of Object.entries(source)) {
-            if (value === undefined || value === null) {
-                continue;
+        // Log incoming request for debugging
+        console.log('Cashfree return request:', {
+            method: req.method,
+            query: req.query,
+            body: req.body,
+            headers: {
+                'content-type': req.headers['content-type'],
+                'user-agent': req.headers['user-agent']
             }
-            if (Array.isArray(value)) {
-                if (value.length > 0) {
-                    payload[key] = value[0];
+        });
+        const payload = {};
+        const assignEntries = (source) => {
+            if (!source) {
+                return;
+            }
+            for (const [key, value] of Object.entries(source)) {
+                if (value === undefined || value === null) {
+                    continue;
+                }
+                if (Array.isArray(value)) {
+                    if (value.length > 0) {
+                        payload[key] = value[0];
+                    }
+                }
+                else {
+                    payload[key] = value;
                 }
             }
-            else {
-                payload[key] = value;
-            }
+        };
+        assignEntries(req.query);
+        if ((req.method === "POST" || req.method === "PUT") &&
+            req.body &&
+            typeof req.body === "object" &&
+            !Array.isArray(req.body)) {
+            assignEntries(req.body);
         }
-    };
-    assignEntries(req.query);
-    if ((req.method === "POST" || req.method === "PUT") &&
-        req.body &&
-        typeof req.body === "object" &&
-        !Array.isArray(req.body)) {
-        assignEntries(req.body);
-    }
-    const forwardedProto = req.get("x-forwarded-proto");
-    const forwardedHost = req.get("x-forwarded-host");
-    const requestHost = forwardedHost ?? req.get("host");
-    const protocol = forwardedProto?.split(",")[0]?.trim() || req.protocol;
-    // Flutter app deep links
-    const flutterAppScheme = process.env.FLUTTER_APP_SCHEME || "smartparking";
-    const subscriptionPath = "://admin/subscribe-plan";
-    const dashboardPath = "://admin/dashboard";
-    const getValue = (...keys) => {
-        for (const key of keys) {
-            const value = payload[key];
-            if (value === undefined || value === null) {
-                continue;
+        // Note: These variables are kept for potential future use in URL construction
+        // const forwardedProto = req.get("x-forwarded-proto");
+        // const forwardedHost = req.get("x-forwarded-host");
+        // const requestHost = forwardedHost ?? req.get("host");
+        // const protocol = forwardedProto?.split(",")[0]?.trim() || req.protocol;
+        // Flutter app deep links
+        const flutterAppScheme = process.env.FLUTTER_APP_SCHEME || "smartparking";
+        const subscriptionPath = "://admin/subscribe-plan";
+        const dashboardPath = "://admin/dashboard";
+        const getValue = (...keys) => {
+            for (const key of keys) {
+                const value = payload[key];
+                if (value === undefined || value === null) {
+                    continue;
+                }
+                const str = Array.isArray(value) ? String(value[0]) : String(value);
+                const trimmed = str.trim();
+                if (trimmed &&
+                    trimmed.toLowerCase() !== "undefined" &&
+                    trimmed.toLowerCase() !== "null") {
+                    return trimmed;
+                }
             }
-            const str = Array.isArray(value) ? String(value[0]) : String(value);
-            const trimmed = str.trim();
-            if (trimmed &&
-                trimmed.toLowerCase() !== "undefined" &&
-                trimmed.toLowerCase() !== "null") {
-                return trimmed;
-            }
-        }
-        return "";
-    };
-    const orderId = getValue("order_id", "orderId");
-    const referenceId = getValue("reference_id", "referenceId", "cfPaymentId", "paymentId");
-    const paymentSessionId = getValue("payment_session_id", "paymentSessionId");
-    const statusRaw = getValue("txStatus", "transaction_status", "status");
-    let displayStatus = statusRaw || "PENDING";
-    let flowStatus = "PENDING";
-    let message = "";
-    if (!orderId && !paymentSessionId) {
-        flowStatus = "ERROR";
-        message = "Missing order reference. Please contact support.";
-    }
-    else {
-        try {
-            const finalizeResult = await subscriptionService_1.subscriptionService.finalizeCashfreeReturn({
-                orderId,
-                statusHint: statusRaw,
-                referenceId,
-                paymentSessionId,
-                rawQuery: payload,
-            });
-            flowStatus = finalizeResult.status;
-            displayStatus = finalizeResult.cashfreeStatus || displayStatus;
-            message = finalizeResult.message || "";
-        }
-        catch (error) {
+            return "";
+        };
+        const orderId = getValue("order_id", "orderId");
+        const referenceId = getValue("reference_id", "referenceId", "cfPaymentId", "paymentId");
+        const paymentSessionId = getValue("payment_session_id", "paymentSessionId");
+        const statusRaw = getValue("txStatus", "transaction_status", "status");
+        let displayStatus = statusRaw || "PENDING";
+        let flowStatus = "PENDING";
+        let message = "";
+        if (!orderId && !paymentSessionId) {
             flowStatus = "ERROR";
-            message =
-                error instanceof Error
-                    ? error.message
-                    : "Unexpected error occurred while processing payment.";
+            message = "Missing order reference. Please contact support.";
         }
-    }
-    const searchParams = new url_1.URLSearchParams();
-    // Use Flutter app's expected parameter names
-    // If Cashfree indicates success, trust that even if payment not found in our DB
-    const cashfreeIndicatesSuccess = statusRaw &&
-        (statusRaw.toUpperCase() === "SUCCESS" ||
-            statusRaw.toUpperCase() === "PAID");
-    const cashfreeIndicatesFailure = statusRaw &&
-        (statusRaw.toUpperCase() === "FAILED" ||
-            statusRaw.toUpperCase() === "CANCELLED" ||
-            statusRaw.toUpperCase() === "USER_DROPPED");
-    if (flowStatus === "SUCCESS" || cashfreeIndicatesSuccess) {
-        searchParams.set("payment_success", "true");
-    }
-    else if (flowStatus === "FAILED" ||
-        flowStatus === "ERROR" ||
-        cashfreeIndicatesFailure) {
-        searchParams.set("payment_failed", "true");
-    }
-    // Keep both old and new parameter names for compatibility
-    if (flowStatus) {
-        searchParams.set("status", flowStatus.toLowerCase());
-    }
-    if (displayStatus) {
-        searchParams.set("cashfreeStatus", displayStatus.toUpperCase());
-    }
-    if (orderId) {
-        searchParams.set("order_id", orderId); // Flutter expects 'order_id'
-        searchParams.set("orderId", orderId); // Keep for compatibility
-    }
-    if (referenceId) {
-        searchParams.set("referenceId", referenceId);
-    }
-    if (paymentSessionId) {
-        searchParams.set("paymentSessionId", paymentSessionId);
-    }
-    if (message) {
-        searchParams.set("message", message);
-    }
-    const queryString = searchParams.toString();
-    const resolveUrl = (path) => {
-        // For Flutter deep links: smartparking://admin/dashboard?params
-        const deepLink = `${flutterAppScheme}${path}${queryString ? `?${queryString}` : ""}`;
-        return deepLink;
-    };
-    const upperStatus = (displayStatus || "").toUpperCase();
-    const resultPayload = {
-        success: flowStatus === "SUCCESS",
-        status: flowStatus,
-        cashfreeStatus: upperStatus,
-        orderId,
-        referenceId,
-        paymentSessionId,
-        message,
-        subscriptionUrl: resolveUrl(subscriptionPath),
-        dashboardUrl: resolveUrl(dashboardPath),
-    };
-    if (req.headers.accept?.includes("application/json")) {
-        return res.json(resultPayload);
-    }
-    const headline = flowStatus === "SUCCESS"
-        ? "Payment Successful"
-        : flowStatus === "FAILED"
-            ? "Payment Failed"
-            : flowStatus === "NOT_FOUND"
-                ? "Payment Not Found"
-                : flowStatus === "ERROR"
-                    ? "Payment Processing Error"
-                    : "Payment Pending";
-    const description = message ||
-        (flowStatus === "SUCCESS"
-            ? "Your subscription has been activated. You can close this window."
+        else {
+            try {
+                const finalizeResult = await subscriptionService_1.subscriptionService.finalizeCashfreeReturn({
+                    orderId,
+                    statusHint: statusRaw,
+                    referenceId,
+                    paymentSessionId,
+                    rawQuery: payload,
+                });
+                flowStatus = finalizeResult.status;
+                displayStatus = finalizeResult.cashfreeStatus || displayStatus;
+                message = finalizeResult.message || "";
+            }
+            catch (error) {
+                flowStatus = "ERROR";
+                message =
+                    error instanceof Error
+                        ? error.message
+                        : "Unexpected error occurred while processing payment.";
+            }
+        }
+        const searchParams = new url_1.URLSearchParams();
+        // Use Flutter app's expected parameter names
+        // If Cashfree indicates success, trust that even if payment not found in our DB
+        const cashfreeIndicatesSuccess = statusRaw &&
+            (statusRaw.toUpperCase() === "SUCCESS" ||
+                statusRaw.toUpperCase() === "PAID");
+        const cashfreeIndicatesFailure = statusRaw &&
+            (statusRaw.toUpperCase() === "FAILED" ||
+                statusRaw.toUpperCase() === "CANCELLED" ||
+                statusRaw.toUpperCase() === "USER_DROPPED");
+        if (flowStatus === "SUCCESS" || cashfreeIndicatesSuccess) {
+            searchParams.set("payment_success", "true");
+        }
+        else if (flowStatus === "FAILED" ||
+            flowStatus === "ERROR" ||
+            cashfreeIndicatesFailure) {
+            searchParams.set("payment_failed", "true");
+        }
+        // Keep both old and new parameter names for compatibility
+        if (flowStatus) {
+            searchParams.set("status", flowStatus.toLowerCase());
+        }
+        if (displayStatus) {
+            searchParams.set("cashfreeStatus", displayStatus.toUpperCase());
+        }
+        if (orderId) {
+            searchParams.set("order_id", orderId); // Flutter expects 'order_id'
+            searchParams.set("orderId", orderId); // Keep for compatibility
+        }
+        if (referenceId) {
+            searchParams.set("referenceId", referenceId);
+        }
+        if (paymentSessionId) {
+            searchParams.set("paymentSessionId", paymentSessionId);
+        }
+        if (message) {
+            searchParams.set("message", message);
+        }
+        const queryString = searchParams.toString();
+        const resolveUrl = (path) => {
+            // For Flutter deep links: smartparking://admin/dashboard?params
+            const deepLink = `${flutterAppScheme}${path}${queryString ? `?${queryString}` : ""}`;
+            return deepLink;
+        };
+        const upperStatus = (displayStatus || "").toUpperCase();
+        const resultPayload = {
+            success: flowStatus === "SUCCESS",
+            status: flowStatus,
+            cashfreeStatus: upperStatus,
+            orderId,
+            referenceId,
+            paymentSessionId,
+            message,
+            subscriptionUrl: resolveUrl(subscriptionPath),
+            dashboardUrl: resolveUrl(dashboardPath),
+        };
+        if (req.headers.accept?.includes("application/json")) {
+            return res.json(resultPayload);
+        }
+        const headline = flowStatus === "SUCCESS"
+            ? "Payment Successful"
             : flowStatus === "FAILED"
-                ? "The payment did not complete. Please return to the app and try again."
+                ? "Payment Failed"
                 : flowStatus === "NOT_FOUND"
-                    ? "We could not locate the payment record. Please contact support with your order reference."
+                    ? "Payment Not Found"
                     : flowStatus === "ERROR"
-                        ? "We encountered an issue while verifying your payment. Please check again in a moment."
-                        : "The payment result is pending. The app will refresh once Cashfree confirms the status.");
-    const payloadJson = JSON.stringify(resultPayload).replace(/</g, "\u003c");
-    return res.status(200).send(`<!DOCTYPE html>
+                        ? "Payment Processing Error"
+                        : "Payment Pending";
+        const description = message ||
+            (flowStatus === "SUCCESS"
+                ? "Your subscription has been activated. You can close this window."
+                : flowStatus === "FAILED"
+                    ? "The payment did not complete. Please return to the app and try again."
+                    : flowStatus === "NOT_FOUND"
+                        ? "We could not locate the payment record. Please contact support with your order reference."
+                        : flowStatus === "ERROR"
+                            ? "We encountered an issue while verifying your payment. Please check again in a moment."
+                            : "The payment result is pending. The app will refresh once Cashfree confirms the status.");
+        // Safely serialize payload for JavaScript
+        let payloadJson;
+        try {
+            payloadJson = JSON.stringify(resultPayload).replace(/</g, "\u003c");
+        }
+        catch (serializeError) {
+            console.error('Error serializing payload:', serializeError);
+            payloadJson = JSON.stringify({ error: 'Serialization failed' });
+        }
+        // Sanitize variables for HTML template
+        const safeHeadline = (headline || "Payment Result").replace(/[<>&"']/g, '');
+        const safeDescription = (description || "Processing payment result...").replace(/[<>&"']/g, '');
+        const safeStatus = (upperStatus || "UNKNOWN").replace(/[<>&"']/g, '');
+        const safeOrderId = orderId ? orderId.replace(/[<>&"']/g, '') : '';
+        return res.status(200).send(`<!DOCTYPE html>
   <html lang="en">
     <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <title>${headline}</title>
+      <title>${safeHeadline}</title>
       <style>
         :root { color-scheme: dark; }
         body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -394,10 +419,10 @@ app.all("/payments/cashfree/return", async (req, res) => {
 
       <!-- Main Card (Hidden when alert is shown) -->
       <div id="mainCard" class="card">
-        <h1>${headline}</h1>
-        <p>${description}</p>
-        <div class="meta">Status: <strong>${upperStatus || "UNKNOWN"}</strong></div>
-        ${orderId ? `<div class="meta">Order ID: ${orderId}</div>` : ""}
+        <h1>${safeHeadline}</h1>
+        <p>${safeDescription}</p>
+        <div class="meta">Status: <strong>${safeStatus}</strong></div>
+        ${safeOrderId ? `<div class="meta">Order ID: ${safeOrderId}</div>` : ""}
       </div>
       <script>
         (function () {
@@ -497,6 +522,41 @@ app.all("/payments/cashfree/return", async (req, res) => {
       </script>
     </body>
   </html>`);
+    }
+    catch (error) {
+        console.error('Error in Cashfree return handler:', error);
+        loggerService_1.logger.error('Cashfree return handler error', error, {
+            category: 'payment',
+            endpoint: '/payments/cashfree/return',
+            method: req.method,
+            query: req.query,
+            body: req.body
+        });
+        // Return a simple error page
+        return res.status(500).send(`<!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Payment Processing Error</title>
+        <style>
+          body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; height: 100vh; display: flex; align-items: center; justify-content: center; }
+          .card { background: rgba(15, 23, 42, 0.92); padding: 32px 36px; border-radius: 16px; text-align: center; max-width: 420px; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <h1>Payment Processing Error</h1>
+          <p>We encountered an issue while processing your payment result. Please check your payment status in the app or contact support.</p>
+        </div>
+        <script>
+          setTimeout(function() {
+            try { window.close(); } catch (_) {}
+          }, 3000);
+        </script>
+      </body>
+    </html>`);
+    }
 });
 // Handle unhandled routes (must be after all other routes)
 app.all("*", errorHandler_1.handleNotFound);

@@ -230,11 +230,23 @@ app.get("/", (_, res) => {
 });
 
 app.all("/payments/cashfree/return", async (req, res) => {
-  if (req.method === "HEAD") {
-    return res.status(200).end();
-  }
+  try {
+    if (req.method === "HEAD") {
+      return res.status(200).end();
+    }
 
-  const payload: Record<string, any> = {};
+    // Log incoming request for debugging
+    console.log('Cashfree return request:', {
+      method: req.method,
+      query: req.query,
+      body: req.body,
+      headers: {
+        'content-type': req.headers['content-type'],
+        'user-agent': req.headers['user-agent']
+      }
+    });
+
+    const payload: Record<string, any> = {};
 
   const assignEntries = (source: Record<string, any> | undefined) => {
     if (!source) {
@@ -264,10 +276,11 @@ app.all("/payments/cashfree/return", async (req, res) => {
     assignEntries(req.body as Record<string, any>);
   }
 
-  const forwardedProto = req.get("x-forwarded-proto");
-  const forwardedHost = req.get("x-forwarded-host");
-  const requestHost = forwardedHost ?? req.get("host");
-  const protocol = forwardedProto?.split(",")[0]?.trim() || req.protocol;
+  // Note: These variables are kept for potential future use in URL construction
+  // const forwardedProto = req.get("x-forwarded-proto");
+  // const forwardedHost = req.get("x-forwarded-host");
+  // const requestHost = forwardedHost ?? req.get("host");
+  // const protocol = forwardedProto?.split(",")[0]?.trim() || req.protocol;
   // Flutter app deep links
   const flutterAppScheme = process.env.FLUTTER_APP_SCHEME || "smartparking";
   const subscriptionPath = "://admin/subscribe-plan";
@@ -424,14 +437,27 @@ app.all("/payments/cashfree/return", async (req, res) => {
             ? "We encountered an issue while verifying your payment. Please check again in a moment."
             : "The payment result is pending. The app will refresh once Cashfree confirms the status.");
 
-  const payloadJson = JSON.stringify(resultPayload).replace(/</g, "\u003c");
+  // Safely serialize payload for JavaScript
+  let payloadJson;
+  try {
+    payloadJson = JSON.stringify(resultPayload).replace(/</g, "\u003c");
+  } catch (serializeError) {
+    console.error('Error serializing payload:', serializeError);
+    payloadJson = JSON.stringify({ error: 'Serialization failed' });
+  }
 
-  return res.status(200).send(`<!DOCTYPE html>
+  // Sanitize variables for HTML template
+  const safeHeadline = (headline || "Payment Result").replace(/[<>&"']/g, '');
+  const safeDescription = (description || "Processing payment result...").replace(/[<>&"']/g, '');
+  const safeStatus = (upperStatus || "UNKNOWN").replace(/[<>&"']/g, '');
+  const safeOrderId = orderId ? orderId.replace(/[<>&"']/g, '') : '';
+
+    return res.status(200).send(`<!DOCTYPE html>
   <html lang="en">
     <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <title>${headline}</title>
+      <title>${safeHeadline}</title>
       <style>
         :root { color-scheme: dark; }
         body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -467,10 +493,10 @@ app.all("/payments/cashfree/return", async (req, res) => {
 
       <!-- Main Card (Hidden when alert is shown) -->
       <div id="mainCard" class="card">
-        <h1>${headline}</h1>
-        <p>${description}</p>
-        <div class="meta">Status: <strong>${upperStatus || "UNKNOWN"}</strong></div>
-        ${orderId ? `<div class="meta">Order ID: ${orderId}</div>` : ""}
+        <h1>${safeHeadline}</h1>
+        <p>${safeDescription}</p>
+        <div class="meta">Status: <strong>${safeStatus}</strong></div>
+        ${safeOrderId ? `<div class="meta">Order ID: ${safeOrderId}</div>` : ""}
       </div>
       <script>
         (function () {
@@ -570,6 +596,41 @@ app.all("/payments/cashfree/return", async (req, res) => {
       </script>
     </body>
   </html>`);
+  } catch (error) {
+    console.error('Error in Cashfree return handler:', error);
+    logger.error('Cashfree return handler error', error, {
+      category: 'payment',
+      endpoint: '/payments/cashfree/return',
+      method: req.method,
+      query: req.query,
+      body: req.body
+    });
+
+    // Return a simple error page
+    return res.status(500).send(`<!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Payment Processing Error</title>
+        <style>
+          body { font-family: Arial, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; height: 100vh; display: flex; align-items: center; justify-content: center; }
+          .card { background: rgba(15, 23, 42, 0.92); padding: 32px 36px; border-radius: 16px; text-align: center; max-width: 420px; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <h1>Payment Processing Error</h1>
+          <p>We encountered an issue while processing your payment result. Please check your payment status in the app or contact support.</p>
+        </div>
+        <script>
+          setTimeout(function() {
+            try { window.close(); } catch (_) {}
+          }, 3000);
+        </script>
+      </body>
+    </html>`);
+  }
 });
 
 // Handle unhandled routes (must be after all other routes)
