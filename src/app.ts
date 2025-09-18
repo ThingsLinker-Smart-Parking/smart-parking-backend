@@ -462,7 +462,23 @@ app.all("/payments/cashfree/return", async (req, res) => {
           } catch (err) {
             console.warn('cashfreeResult postMessage failed', err);
           }
-          try { window.close(); } catch (_) {}
+
+          var targetUrl = null;
+          if (payload && payload.success && payload.dashboardUrl) {
+            targetUrl = payload.dashboardUrl;
+          } else if (payload && !payload.success && payload.subscriptionUrl) {
+            targetUrl = payload.subscriptionUrl;
+          }
+
+          if (targetUrl) {
+            setTimeout(function () {
+              try { window.location.href = targetUrl; } catch (_) {}
+            }, 2000);
+          }
+
+          setTimeout(function () {
+            try { window.close(); } catch (_) {}
+          }, 2500);
         })();
       </script>
     </body>
