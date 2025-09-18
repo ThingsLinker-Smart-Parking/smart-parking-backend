@@ -18,7 +18,8 @@
       "Bash(xargs kill:*)",
       "Read(//dev/**)",
       "Bash(tr:*)",
-      "Bash(git checkout -- src/services/subscriptionService.ts)"
+      "Bash(git checkout -- src/services/subscriptionService.ts)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

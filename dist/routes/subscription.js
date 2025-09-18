@@ -26,7 +26,7 @@ const router = (0, express_1.Router)();
  *                   items:
  *                     $ref: '#/components/schemas/SubscriptionPlan'
  */
-router.get('/plans', subscriptionController_1.getSubscriptionPlans);
+router.get("/plans", subscriptionController_1.getSubscriptionPlans);
 /**
  * @swagger
  * /api/subscriptions/plans/{id}:
@@ -46,7 +46,7 @@ router.get('/plans', subscriptionController_1.getSubscriptionPlans);
  *       404:
  *         description: Subscription plan not found
  */
-router.get('/plans/:id', subscriptionController_1.getSubscriptionPlan);
+router.get("/plans/:id", subscriptionController_1.getSubscriptionPlan);
 /**
  * @swagger
  * /api/subscriptions:
@@ -91,7 +91,7 @@ router.get('/plans/:id', subscriptionController_1.getSubscriptionPlan);
  *       401:
  *         description: Unauthorized
  */
-router.post('/', auth_1.authenticateToken, subscriptionController_1.createSubscription);
+router.post("/", auth_1.authenticateToken, subscriptionController_1.createSubscription);
 /**
  * @swagger
  * /api/subscriptions/current:
@@ -108,7 +108,7 @@ router.post('/', auth_1.authenticateToken, subscriptionController_1.createSubscr
  *       401:
  *         description: Unauthorized
  */
-router.get('/current', auth_1.authenticateToken, subscriptionController_1.getUserSubscription);
+router.get("/current", auth_1.authenticateToken, subscriptionController_1.getUserSubscription);
 /**
  * @swagger
  * /api/subscriptions:
@@ -134,7 +134,7 @@ router.get('/current', auth_1.authenticateToken, subscriptionController_1.getUse
  *       401:
  *         description: Unauthorized
  */
-router.get('/', auth_1.authenticateToken, subscriptionController_1.listUserSubscriptions);
+router.get("/", auth_1.authenticateToken, subscriptionController_1.listUserSubscriptions);
 /**
  * @swagger
  * /api/subscriptions/history:
@@ -149,7 +149,7 @@ router.get('/', auth_1.authenticateToken, subscriptionController_1.listUserSubsc
  *       401:
  *         description: Unauthorized
  */
-router.get('/history', auth_1.authenticateToken, subscriptionController_1.getUserSubscriptionHistory);
+router.get("/history", auth_1.authenticateToken, subscriptionController_1.getUserSubscriptionHistory);
 /**
  * @swagger
  * /api/subscriptions/payments:
@@ -164,7 +164,7 @@ router.get('/history', auth_1.authenticateToken, subscriptionController_1.getUse
  *       401:
  *         description: Unauthorized
  */
-router.get('/payments', auth_1.authenticateToken, subscriptionController_1.getUserPaymentHistory);
+router.get("/payments", auth_1.authenticateToken, subscriptionController_1.getUserPaymentHistory);
 /**
  * @swagger
  * /api/subscriptions/{id}/cancel:
@@ -197,7 +197,7 @@ router.get('/payments', auth_1.authenticateToken, subscriptionController_1.getUs
  *       401:
  *         description: Unauthorized
  */
-router.post('/:id/cancel', auth_1.authenticateToken, subscriptionController_1.cancelSubscription);
+router.post("/:id/cancel", auth_1.authenticateToken, subscriptionController_1.cancelSubscription);
 /**
  * @swagger
  * /api/subscriptions/{id}/renew:
@@ -221,7 +221,7 @@ router.post('/:id/cancel', auth_1.authenticateToken, subscriptionController_1.ca
  *       401:
  *         description: Unauthorized
  */
-router.post('/:id/renew', auth_1.authenticateToken, subscriptionController_1.renewSubscription);
+router.post("/:id/renew", auth_1.authenticateToken, subscriptionController_1.renewSubscription);
 /**
  * @swagger
  * /api/subscriptions/analytics:
@@ -236,7 +236,7 @@ router.post('/:id/renew', auth_1.authenticateToken, subscriptionController_1.ren
  *       401:
  *         description: Unauthorized
  */
-router.get('/analytics', auth_1.authenticateToken, subscriptionController_1.getSubscriptionAnalytics);
+router.get("/analytics", auth_1.authenticateToken, subscriptionController_1.getSubscriptionAnalytics);
 /**
  * @swagger
  * /api/subscriptions/limits:
@@ -267,7 +267,7 @@ router.get('/analytics', auth_1.authenticateToken, subscriptionController_1.getS
  *       401:
  *         description: Unauthorized
  */
-router.get('/limits', auth_1.authenticateToken, subscriptionController_1.checkSubscriptionLimits);
+router.get("/limits", auth_1.authenticateToken, subscriptionController_1.checkSubscriptionLimits);
 // Admin routes
 /**
  * @swagger
@@ -285,7 +285,7 @@ router.get('/limits', auth_1.authenticateToken, subscriptionController_1.checkSu
  *       403:
  *         description: Insufficient permissions
  */
-router.get('/admin/active', auth_1.authenticateToken, (0, auth_1.requireRole)(['admin', 'super_admin']), subscriptionController_1.getAllActiveSubscriptions);
+router.get("/admin/active", auth_1.authenticateToken, (0, auth_1.requireRole)(["admin", "super_admin"]), subscriptionController_1.getAllActiveSubscriptions);
 /**
  * @swagger
  * /api/subscriptions/admin/expiring:
@@ -309,7 +309,7 @@ router.get('/admin/active', auth_1.authenticateToken, (0, auth_1.requireRole)(['
  *       403:
  *         description: Insufficient permissions
  */
-router.get('/admin/expiring', auth_1.authenticateToken, (0, auth_1.requireRole)(['admin', 'super_admin']), subscriptionController_1.getExpiringSubscriptions);
+router.get("/admin/expiring", auth_1.authenticateToken, (0, auth_1.requireRole)(["admin", "super_admin"]), subscriptionController_1.getExpiringSubscriptions);
 // Payment routes
 /**
  * @swagger
@@ -348,7 +348,8 @@ router.get('/admin/expiring', auth_1.authenticateToken, (0, auth_1.requireRole)(
  *       401:
  *         description: Unauthorized
  */
-router.post('/payments/session', auth_1.authenticateToken, subscriptionController_1.createPaymentSession);
+router.post("/payments/session", auth_1.authenticateToken, subscriptionController_1.createPaymentSession);
+router.post("/payments/cashfree/finalize", auth_1.authenticateToken, subscriptionController_1.finalizeCashfreePayment);
 /**
  * @swagger
  * /api/subscriptions/payments/process:
@@ -384,7 +385,7 @@ router.post('/payments/session', auth_1.authenticateToken, subscriptionControlle
  *       400:
  *         description: Invalid input
  */
-router.post('/payments/process', subscriptionController_1.processPayment);
+router.post("/payments/process", subscriptionController_1.processPayment);
 /**
  * @swagger
  * /api/subscriptions/payments/{paymentId}/refund:
@@ -420,7 +421,7 @@ router.post('/payments/process', subscriptionController_1.processPayment);
  *       404:
  *         description: Payment not found
  */
-router.post('/payments/:paymentId/refund', auth_1.authenticateToken, subscriptionController_1.processRefund);
+router.post("/payments/:paymentId/refund", auth_1.authenticateToken, subscriptionController_1.processRefund);
 /**
  * @swagger
  * /api/subscriptions/webhooks/payment:
@@ -452,7 +453,7 @@ router.post('/payments/:paymentId/refund', auth_1.authenticateToken, subscriptio
  *       400:
  *         description: Invalid webhook data
  */
-router.post('/webhooks/payment', subscriptionController_1.handlePaymentWebhook);
+router.post("/webhooks/payment", subscriptionController_1.handlePaymentWebhook);
 /**
  * @swagger
  * /api/subscriptions/payments/{transactionId}:
@@ -476,5 +477,5 @@ router.post('/webhooks/payment', subscriptionController_1.handlePaymentWebhook);
  *       404:
  *         description: Payment not found
  */
-router.get('/payments/:transactionId', auth_1.authenticateToken, subscriptionController_1.getPaymentDetails);
+router.get("/payments/:transactionId", auth_1.authenticateToken, subscriptionController_1.getPaymentDetails);
 exports.default = router;

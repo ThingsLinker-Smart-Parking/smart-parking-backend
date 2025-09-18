@@ -28,7 +28,7 @@ class SubscriptionService {
         }
         if ((0, validation_1.validateUuid)(trimmed)) {
             const planById = await planRepository.findOne({
-                where: { id: trimmed, isActive: true, isDeleted: false }
+                where: { id: trimmed, isActive: true, isDeleted: false },
             });
             if (planById) {
                 return planById;
@@ -36,16 +36,16 @@ class SubscriptionService {
         }
         const normalized = trimmed.toLowerCase();
         const variants = [normalized];
-        if (normalized.includes('-') || normalized.includes('_')) {
-            variants.push(normalized.replace(/[-_]+/g, ' '));
+        if (normalized.includes("-") || normalized.includes("_")) {
+            variants.push(normalized.replace(/[-_]+/g, " "));
         }
         for (const variant of variants) {
             const planByName = await planRepository.findOne({
                 where: {
                     name: (0, typeorm_1.ILike)(variant),
                     isActive: true,
-                    isDeleted: false
-                }
+                    isDeleted: false,
+                },
             });
             if (planByName) {
                 return planByName;
@@ -64,26 +64,28 @@ class SubscriptionService {
             const paymentRepository = manager.getRepository(Payment_1.Payment);
             const user = await userRepository.findOne({ where: { id: data.userId } });
             if (!user) {
-                throw new Error('User not found');
+                throw new Error("User not found");
             }
             const plan = await this.findPlanByIdentifier(planRepository, data.planId);
             if (!plan) {
-                throw new Error('Subscription plan not found or inactive');
+                throw new Error("Subscription plan not found or inactive");
             }
             // Check for existing active subscription
             const existingSubscription = await subscriptionRepository.findOne({
                 where: {
                     admin: { id: data.userId },
-                    status: (0, typeorm_1.In)(['active', 'trial', 'pending'])
-                }
+                    status: (0, typeorm_1.In)(["active", "trial", "pending"]),
+                },
             });
             if (existingSubscription) {
-                throw new Error('User already has an active subscription');
+                throw new Error("User already has an active subscription");
             }
             // Calculate dates
             const startDate = new Date();
             const endDate = this.calculateEndDate(startDate, data.billingCycle);
-            const trialEndDate = data.trialDays ? new Date(startDate.getTime() + data.trialDays * 24 * 60 * 60 * 1000) : null;
+            const trialEndDate = data.trialDays
+                ? new Date(startDate.getTime() + data.trialDays * 24 * 60 * 60 * 1000)
+                : null;
             // Create subscription
             const subscription = subscriptionRepository.create({
                 admin: user,
@@ -94,8 +96,8 @@ class SubscriptionService {
                 endDate,
                 trialEndDate: trialEndDate || undefined,
                 nextBillingDate: endDate,
-                status: trialEndDate ? 'trial' : 'pending',
-                paymentStatus: trialEndDate ? 'pending' : 'pending',
+                status: trialEndDate ? "trial" : "pending",
+                paymentStatus: trialEndDate ? "pending" : "pending",
                 gatewayLimit: plan.maxGateways,
                 parkingLotLimit: plan.maxParkingLots,
                 floorLimit: plan.maxFloors,
@@ -104,8 +106,8 @@ class SubscriptionService {
                 autoRenew: data.autoRenew ?? true,
                 metadata: {
                     nodeCount: data.nodeCount || 0,
-                    createdFrom: 'api'
-                }
+                    createdFrom: "api",
+                },
             });
             const savedSubscription = await subscriptionRepository.save(subscription);
             // Create payment record
@@ -113,10 +115,10 @@ class SubscriptionService {
                 transactionId: this.generateTransactionId(),
                 user: user,
                 subscription: savedSubscription,
-                type: 'subscription',
+                type: "subscription",
                 amount: savedSubscription.amount,
-                currency: 'USD',
-                status: 'pending',
+                currency: "USD",
+                status: "pending",
                 paymentMethod: data.paymentMethod,
                 description: `Subscription to ${plan.name} plan (${data.billingCycle})`,
                 metadata: {
@@ -124,8 +126,8 @@ class SubscriptionService {
                     planName: plan.name,
                     billingCycle: data.billingCycle,
                     trialDays: data.trialDays,
-                    nodeCount: data.nodeCount || 0
-                }
+                    nodeCount: data.nodeCount || 0,
+                },
             });
             const savedPayment = await paymentRepository.save(payment);
             return { subscription: savedSubscription, payment: savedPayment };
@@ -139,20 +141,20 @@ class SubscriptionService {
             const paymentRepository = manager.getRepository(Payment_1.Payment);
             const user = await userRepository.findOne({ where: { id: data.userId } });
             if (!user) {
-                throw new Error('User not found');
+                throw new Error("User not found");
             }
             const plan = await this.findPlanByIdentifier(planRepository, data.planId);
             if (!plan) {
-                throw new Error('Subscription plan not found or inactive');
+                throw new Error("Subscription plan not found or inactive");
             }
             const existingSubscription = await subscriptionRepository.findOne({
                 where: {
                     admin: { id: data.userId },
-                    status: (0, typeorm_1.In)(['active', 'trial', 'pending'])
-                }
+                    status: (0, typeorm_1.In)(["active", "trial", "pending"]),
+                },
             });
             if (existingSubscription) {
-                throw new Error('User already has an active subscription');
+                throw new Error("User already has an active subscription");
             }
             const nodeCount = data.nodeCount ?? 0;
             const amountUsd = plan.getTotalPriceForCycle(data.billingCycle, nodeCount);
@@ -167,8 +169,8 @@ class SubscriptionService {
                 startDate,
                 endDate,
                 nextBillingDate: endDate,
-                status: 'pending',
-                paymentStatus: 'pending',
+                status: "pending",
+                paymentStatus: "pending",
                 gatewayLimit: plan.maxGateways,
                 parkingLotLimit: plan.maxParkingLots,
                 floorLimit: plan.maxFloors,
@@ -177,8 +179,8 @@ class SubscriptionService {
                 autoRenew: true,
                 metadata: {
                     nodeCount,
-                    createdFrom: 'cashfree_session'
-                }
+                    createdFrom: "cashfree_session",
+                },
             });
             const savedSubscription = await subscriptionRepository.save(subscription);
             const transactionId = this.generateTransactionId();
@@ -186,11 +188,11 @@ class SubscriptionService {
                 transactionId,
                 user,
                 subscription: savedSubscription,
-                type: 'subscription',
+                type: "subscription",
                 amount: amountInInr,
-                currency: 'INR',
-                status: 'pending',
-                paymentMethod: 'cashfree',
+                currency: "INR",
+                status: "pending",
+                paymentMethod: "cashfree",
                 description: `Subscription to ${plan.name} plan (${data.billingCycle})`,
                 metadata: {
                     planId: plan.id,
@@ -199,13 +201,13 @@ class SubscriptionService {
                     nodeCount,
                     amountUsd,
                     amountInInr,
-                    environment: environment_1.env.CASHFREE_ENVIRONMENT
-                }
+                    environment: environment_1.env.CASHFREE_ENVIRONMENT,
+                },
             });
             const order = await cashfreePaymentService_1.cashfreePaymentService.createOrder({
                 orderId: transactionId,
                 amount: amountInInr,
-                currency: 'INR',
+                currency: "INR",
                 customerId: user.id,
                 customerEmail: user.email,
                 customerName: user.getFullName(),
@@ -213,8 +215,8 @@ class SubscriptionService {
                 orderNote: `Subscription ${savedSubscription.id}`,
                 orderTags: {
                     subscription_id: savedSubscription.id,
-                    payment_id: payment.id
-                }
+                    payment_id: payment.id,
+                },
             });
             payment.metadata = {
                 ...payment.metadata,
@@ -222,19 +224,19 @@ class SubscriptionService {
                     orderId: order.order_id,
                     paymentSessionId: order.payment_session_id,
                     cfOrderId: order.cf_order_id,
-                    orderStatus: order.order_status
-                }
+                    orderStatus: order.order_status,
+                },
             };
             const savedPayment = await paymentRepository.save(payment);
             const finalReturnUrl = (data.returnUrl ?? environment_1.env.CASHFREE_RETURN_URL)
-                .replace('{order_id}', order.order_id)
-                .replace('{payment_session_id}', order.payment_session_id);
+                .replace("{order_id}", order.order_id)
+                .replace("{payment_session_id}", order.payment_session_id);
             return {
                 paymentSessionId: order.payment_session_id,
                 orderId: order.order_id,
                 cfOrderId: order.cf_order_id,
                 orderAmount: order.order_amount ?? Number(amountInInr.toFixed(2)),
-                orderCurrency: order.order_currency ?? 'INR',
+                orderCurrency: order.order_currency ?? "INR",
                 paymentId: savedPayment.id,
                 subscriptionId: savedSubscription.id,
                 plan: {
@@ -242,9 +244,9 @@ class SubscriptionService {
                     name: plan.name,
                     billingCycle: data.billingCycle,
                     amountUsd,
-                    amountInInr
+                    amountInInr,
                 },
-                returnUrl: finalReturnUrl
+                returnUrl: finalReturnUrl,
             };
         });
     }
@@ -257,35 +259,41 @@ class SubscriptionService {
             const subscriptionRepository = manager.getRepository(Subscription_1.Subscription);
             const payment = await paymentRepository.findOne({
                 where: { id: paymentId },
-                relations: ['subscription', 'user']
+                relations: ["subscription", "user"],
             });
             if (!payment) {
-                throw new Error('Payment not found');
+                throw new Error("Payment not found");
             }
-            if (payment.status === 'completed') {
-                throw new Error('Payment has already been processed');
+            if (payment.status === "completed") {
+                // Payment was already successfully processed - return the existing payment
+                loggerService_1.logger.info("Payment already completed, returning existing record", {
+                    paymentId: payment.id,
+                    orderId: payment.transactionId,
+                    status: payment.status,
+                });
+                return payment;
             }
             if (success) {
-                payment.status = 'completed';
+                payment.status = "completed";
                 payment.processedAt = new Date();
                 payment.metadata = {
                     ...payment.metadata,
                     gatewayTransactionId,
-                    processedAt: new Date().toISOString()
+                    processedAt: new Date().toISOString(),
                 };
                 // Update subscription status
                 if (payment.subscription) {
-                    payment.subscription.status = 'active';
-                    payment.subscription.paymentStatus = 'paid';
+                    payment.subscription.status = "active";
+                    payment.subscription.paymentStatus = "paid";
                     await subscriptionRepository.save(payment.subscription);
                 }
             }
             else {
-                payment.status = 'failed';
-                payment.failureReason = failureReason || 'Payment processing failed';
+                payment.status = "failed";
+                payment.failureReason = failureReason || "Payment processing failed";
                 // Update subscription status
                 if (payment.subscription) {
-                    payment.subscription.paymentStatus = 'failed';
+                    payment.subscription.paymentStatus = "failed";
                     await subscriptionRepository.save(payment.subscription);
                 }
             }
@@ -296,45 +304,54 @@ class SubscriptionService {
      * Get user's active subscription
      */
     async getUserActiveSubscription(userId) {
-        return await this.subscriptionRepository.findOne({
-            where: {
-                admin: { id: userId },
-                status: (0, typeorm_1.In)(['active', 'trial'])
-            },
-            relations: ['plan'],
-            order: { createdAt: 'DESC' }
-        });
+        return await this.subscriptionRepository
+            .createQueryBuilder("subscription")
+            .leftJoinAndSelect("subscription.plan", "plan")
+            .where("subscription.admin.id = :userId", { userId })
+            .andWhere("subscription.status IN (:...statuses)", {
+            statuses: ["active", "trial"],
+        })
+            .andWhere("subscription.isDeleted = false")
+            .orderBy("subscription.createdAt", "DESC")
+            .getOne();
     }
     /**
      * Get user's subscription history
      */
     async getUserSubscriptionHistory(userId) {
-        return await this.subscriptionRepository.find({
-            where: { admin: { id: userId } },
-            relations: ['plan'],
-            order: { createdAt: 'DESC' }
-        });
+        return await this.subscriptionRepository
+            .createQueryBuilder("subscription")
+            .leftJoinAndSelect("subscription.plan", "plan")
+            .where("subscription.admin.id = :userId", { userId })
+            .andWhere("subscription.isDeleted = false")
+            .orderBy("subscription.createdAt", "DESC")
+            .getMany();
     }
     /**
      * Get user's payment history
      */
     async getUserPaymentHistory(userId) {
-        return await this.paymentRepository.find({
-            where: { user: { id: userId } },
-            relations: ['subscription', 'subscription.plan'],
-            order: { createdAt: 'DESC' }
-        });
+        return await this.paymentRepository
+            .createQueryBuilder("payment")
+            .leftJoinAndSelect("payment.subscription", "subscription")
+            .leftJoinAndSelect("subscription.plan", "plan")
+            .where("payment.user.id = :userId", { userId })
+            .orderBy("payment.createdAt", "DESC")
+            .getMany();
     }
     async getAdminSubscriptions(userId, page = 1, limit = 20) {
         const take = Math.max(1, Math.min(limit, 100));
         const skip = Math.max(0, (Math.max(page, 1) - 1) * take);
-        const [items, total] = await this.subscriptionRepository.findAndCount({
-            where: { admin: { id: userId } },
-            relations: ['plan'],
-            order: { createdAt: 'DESC' },
-            skip,
-            take,
-        });
+        const query = this.subscriptionRepository
+            .createQueryBuilder("subscription")
+            .leftJoinAndSelect("subscription.plan", "plan")
+            .where("subscription.admin.id = :userId", { userId })
+            .andWhere("subscription.isDeleted = false")
+            .orderBy("subscription.createdAt", "DESC");
+        const [items, total] = await Promise.all([
+            query.skip(skip).take(take).getMany(),
+            query.getCount(),
+        ]);
         const totalPages = total === 0 ? 0 : Math.ceil(total / take);
         return {
             items,
@@ -345,41 +362,48 @@ class SubscriptionService {
         };
     }
     async finalizeCashfreeReturn(params) {
-        const { orderId, statusHint, referenceId, paymentSessionId, verifyWithGateway = true, rawQuery } = params;
-        let resolvedOrderId = (orderId ?? '').trim();
+        const { orderId, statusHint, referenceId, paymentSessionId, verifyWithGateway = true, rawQuery, } = params;
+        let resolvedOrderId = (orderId ?? "").trim();
         if (!resolvedOrderId && paymentSessionId) {
             const seedPayment = await this.paymentRepository
-                .createQueryBuilder('payment')
-                .leftJoinAndSelect('payment.subscription', 'subscription')
+                .createQueryBuilder("payment")
+                .leftJoinAndSelect("payment.subscription", "subscription")
                 .where("payment.metadata->'cashfree'->>'paymentSessionId' = :paymentSessionId", { paymentSessionId })
-                .orderBy('payment.createdAt', 'DESC')
+                .orderBy("payment.createdAt", "DESC")
                 .getOne();
             if (seedPayment) {
-                resolvedOrderId = seedPayment.metadata?.cashfree?.orderId?.trim() || seedPayment.transactionId;
+                resolvedOrderId =
+                    seedPayment.metadata?.cashfree?.orderId?.trim() || seedPayment.transactionId;
             }
         }
         if (!resolvedOrderId) {
-            return { status: 'ERROR', message: 'Missing order reference' };
+            return { status: "ERROR", message: "Missing order reference" };
         }
-        const hintedStatus = (statusHint || '').toUpperCase();
-        try {
+        const hintedStatus = (statusHint || "").toUpperCase();
+        const executeFinalize = async () => {
             const interim = await data_source_1.AppDataSource.transaction(async (manager) => {
                 const paymentRepository = manager.getRepository(Payment_1.Payment);
                 const subscriptionRepository = manager.getRepository(Subscription_1.Subscription);
                 let payment = await paymentRepository
-                    .createQueryBuilder('payment')
-                    .leftJoinAndSelect('payment.subscription', 'subscription')
-                    .where("payment.metadata->'cashfree'->>'orderId' = :orderId", { orderId: resolvedOrderId })
-                    .orderBy('payment.createdAt', 'DESC')
+                    .createQueryBuilder("payment")
+                    .leftJoinAndSelect("payment.subscription", "subscription")
+                    .where("payment.metadata->'cashfree'->>'orderId' = :orderId", {
+                    orderId: resolvedOrderId,
+                })
+                    .orderBy("payment.createdAt", "DESC")
                     .getOne();
                 if (!payment) {
                     payment = await paymentRepository.findOne({
                         where: { transactionId: resolvedOrderId },
-                        relations: ['subscription']
+                        relations: ["subscription"],
                     });
                 }
                 if (!payment) {
-                    return { outcome: 'NOT_FOUND', status: hintedStatus || 'UNKNOWN', message: 'Payment not found' };
+                    return {
+                        outcome: "NOT_FOUND",
+                        status: hintedStatus || "UNKNOWN",
+                        message: "Payment not found",
+                    };
                 }
                 const existingCashfree = payment.metadata?.cashfree ?? {};
                 const cashfreeMeta = {
@@ -387,7 +411,7 @@ class SubscriptionService {
                     orderId: resolvedOrderId,
                     paymentSessionId: paymentSessionId || existingCashfree.paymentSessionId,
                     referenceId: referenceId || existingCashfree.referenceId,
-                    status: hintedStatus || existingCashfree.status || 'PENDING',
+                    status: hintedStatus || existingCashfree.status || "PENDING",
                     rawReturn: rawQuery ?? existingCashfree.rawReturn,
                     verifiedAt: new Date().toISOString(),
                 };
@@ -395,15 +419,16 @@ class SubscriptionService {
                     ...(payment.metadata ?? {}),
                     cashfree: cashfreeMeta,
                 };
-                if (cashfreeMeta.status === 'PENDING' && payment.status === 'pending') {
-                    payment.status = 'processing';
+                if (cashfreeMeta.status === "PENDING" && payment.status === "pending") {
+                    payment.status = "processing";
                 }
                 payment = await paymentRepository.save(payment);
                 let effectiveStatus = cashfreeMeta.status;
-                if (verifyWithGateway && (!effectiveStatus || effectiveStatus === 'PENDING')) {
+                if (verifyWithGateway &&
+                    (!effectiveStatus || effectiveStatus === "PENDING")) {
                     try {
                         const gatewayOrder = await cashfreePaymentService_1.cashfreePaymentService.getOrder(resolvedOrderId);
-                        const gatewayStatus = String(gatewayOrder?.order_status || '').toUpperCase();
+                        const gatewayStatus = String(gatewayOrder?.order_status || "").toUpperCase();
                         if (gatewayStatus) {
                             effectiveStatus = gatewayStatus;
                             cashfreeMeta.status = gatewayStatus;
@@ -416,17 +441,23 @@ class SubscriptionService {
                         }
                     }
                     catch (error) {
-                        loggerService_1.logger.warn('Cashfree order verification failed', {
+                        loggerService_1.logger.warn("Cashfree order verification failed", {
                             orderId: resolvedOrderId,
                             error: error instanceof Error ? error.message : error,
                         });
                     }
                 }
-                const successStatuses = new Set(['SUCCESS', 'PAID', 'COMPLETED']);
-                const failureStatuses = new Set(['FAILED', 'CANCELLED', 'CHARGED_BACK', 'EXPIRED', 'VOID']);
+                const successStatuses = new Set(["SUCCESS", "PAID", "COMPLETED"]);
+                const failureStatuses = new Set([
+                    "FAILED",
+                    "CANCELLED",
+                    "CHARGED_BACK",
+                    "EXPIRED",
+                    "VOID",
+                ]);
                 if (successStatuses.has(effectiveStatus)) {
                     return {
-                        outcome: 'SUCCESS',
+                        outcome: "SUCCESS",
                         paymentId: payment.id,
                         gatewayTransactionId: referenceId || resolvedOrderId,
                         status: effectiveStatus,
@@ -434,65 +465,89 @@ class SubscriptionService {
                 }
                 if (failureStatuses.has(effectiveStatus)) {
                     return {
-                        outcome: 'FAILED',
+                        outcome: "FAILED",
                         paymentId: payment.id,
                         gatewayTransactionId: referenceId || resolvedOrderId,
                         status: effectiveStatus,
                     };
                 }
-                if (payment.status !== 'processing') {
-                    payment.status = 'processing';
+                if (payment.status !== "processing") {
+                    payment.status = "processing";
                     payment = await paymentRepository.save(payment);
                 }
-                if (payment.subscription && payment.subscription.paymentStatus !== 'pending') {
-                    payment.subscription.paymentStatus = 'pending';
+                if (payment.subscription &&
+                    payment.subscription.paymentStatus !== "pending") {
+                    payment.subscription.paymentStatus = "pending";
                     await subscriptionRepository.save(payment.subscription);
                 }
                 return {
-                    outcome: 'PENDING',
+                    outcome: "PENDING",
                     payment,
                     subscription: payment.subscription ?? null,
-                    status: effectiveStatus || 'PENDING',
+                    status: effectiveStatus || "PENDING",
                 };
             });
-            if (interim.outcome === 'NOT_FOUND') {
+            if (interim.outcome === "NOT_FOUND") {
                 return {
-                    status: 'NOT_FOUND',
+                    status: "NOT_FOUND",
                     message: interim.message,
                     cashfreeStatus: interim.status,
                 };
             }
-            if (interim.outcome === 'SUCCESS') {
+            if (interim.outcome === "SUCCESS") {
                 const updatedPayment = await this.processPayment(interim.paymentId, interim.gatewayTransactionId, true);
                 return {
-                    status: 'SUCCESS',
+                    status: "SUCCESS",
                     payment: updatedPayment,
                     subscription: updatedPayment.subscription,
                     cashfreeStatus: interim.status,
                 };
             }
-            if (interim.outcome === 'FAILED') {
+            if (interim.outcome === "FAILED") {
                 const updatedPayment = await this.processPayment(interim.paymentId, interim.gatewayTransactionId, false, `Cashfree status: ${interim.status}`);
                 return {
-                    status: 'FAILED',
+                    status: "FAILED",
                     payment: updatedPayment,
                     subscription: updatedPayment.subscription,
                     cashfreeStatus: interim.status,
                 };
             }
             return {
-                status: 'PENDING',
+                status: "PENDING",
                 payment: interim.payment ?? null,
                 subscription: interim.subscription ?? null,
                 cashfreeStatus: interim.status,
             };
+        };
+        try {
+            return await executeFinalize();
         }
         catch (error) {
-            loggerService_1.logger.error('Failed to finalize Cashfree return', error, { orderId: resolvedOrderId });
+            if (error instanceof typeorm_1.TypeORMError &&
+                typeof error.message === "string" &&
+                error.message.includes("Driver not Connected")) {
+                try {
+                    if (data_source_1.AppDataSource.isInitialized) {
+                        await data_source_1.AppDataSource.destroy();
+                    }
+                }
+                catch (destroyError) {
+                    loggerService_1.logger.warn("Failed to destroy data source after driver disconnect", {
+                        error: destroyError instanceof Error
+                            ? destroyError.message
+                            : destroyError,
+                    });
+                }
+                await data_source_1.AppDataSource.initialize();
+                return await executeFinalize();
+            }
+            loggerService_1.logger.error("Failed to finalize Cashfree return", error, {
+                orderId: resolvedOrderId,
+            });
             return {
-                status: 'ERROR',
-                message: error instanceof Error ? error.message : 'Failed to finalize payment',
-                cashfreeStatus: hintedStatus || 'UNKNOWN',
+                status: "ERROR",
+                message: error instanceof Error ? error.message : "Failed to finalize payment",
+                cashfreeStatus: hintedStatus || "UNKNOWN",
             };
         }
     }
@@ -501,14 +556,14 @@ class SubscriptionService {
      */
     async cancelSubscription(subscriptionId, reason) {
         const subscription = await this.subscriptionRepository.findOne({
-            where: { id: subscriptionId }
+            where: { id: subscriptionId },
         });
         if (!subscription) {
-            throw new Error('Subscription not found');
+            throw new Error("Subscription not found");
         }
-        subscription.status = 'cancelled';
+        subscription.status = "cancelled";
         subscription.cancelledAt = new Date();
-        subscription.cancellationReason = reason || 'User cancelled';
+        subscription.cancellationReason = reason || "User cancelled";
         subscription.autoRenew = false;
         return await this.subscriptionRepository.save(subscription);
     }
@@ -521,13 +576,13 @@ class SubscriptionService {
             const paymentRepository = manager.getRepository(Payment_1.Payment);
             const subscription = await subscriptionRepository.findOne({
                 where: { id: subscriptionId },
-                relations: ['plan', 'admin']
+                relations: ["plan", "admin"],
             });
             if (!subscription) {
-                throw new Error('Subscription not found');
+                throw new Error("Subscription not found");
             }
             if (!subscription.canRenew()) {
-                throw new Error('Subscription cannot be renewed');
+                throw new Error("Subscription cannot be renewed");
             }
             // Calculate new dates
             const newStartDate = new Date();
@@ -535,8 +590,8 @@ class SubscriptionService {
             subscription.startDate = newStartDate;
             subscription.endDate = newEndDate;
             subscription.nextBillingDate = newEndDate;
-            subscription.status = 'active';
-            subscription.paymentStatus = 'pending';
+            subscription.status = "active";
+            subscription.paymentStatus = "pending";
             const savedSubscription = await subscriptionRepository.save(subscription);
             // Create payment record if subscription requires payment
             let payment = null;
@@ -545,16 +600,16 @@ class SubscriptionService {
                     transactionId: this.generateTransactionId(),
                     user: subscription.admin,
                     subscription: savedSubscription,
-                    type: 'subscription',
+                    type: "subscription",
                     amount: subscription.amount,
-                    currency: 'USD',
-                    status: 'pending',
-                    paymentMethod: paymentMethod || 'stripe',
+                    currency: "USD",
+                    status: "pending",
+                    paymentMethod: paymentMethod || "stripe",
                     description: `Subscription renewal for ${subscription.plan.name} plan`,
                     metadata: {
                         renewalDate: newStartDate.toISOString(),
-                        billingCycle: subscription.billingCycle
-                    }
+                        billingCycle: subscription.billingCycle,
+                    },
                 });
                 payment = await paymentRepository.save(payment);
             }
@@ -574,7 +629,7 @@ class SubscriptionService {
             parkingLots: subscription.parkingLotLimit,
             floors: subscription.floorLimit,
             parkingSlots: subscription.parkingSlotLimit,
-            users: subscription.userLimit
+            users: subscription.userLimit,
         };
         const limit = limits[resource];
         const remaining = Math.max(0, limit - currentUsage);
@@ -588,26 +643,31 @@ class SubscriptionService {
         const activeSubscription = await this.getUserActiveSubscription(userId);
         const payments = await this.getUserPaymentHistory(userId);
         const totalSpent = payments
-            .filter(p => p.status === 'completed')
+            .filter((p) => p.status === "completed")
             .reduce((sum, p) => sum + Number(p.amount), 0);
-        const paymentCount = payments.filter(p => p.status === 'completed').length;
+        const paymentCount = payments.filter((p) => p.status === "completed").length;
         return {
             activeSubscription,
             totalSpent,
             paymentCount,
             nextBillingDate: activeSubscription?.nextBillingDate || null,
-            daysUntilExpiry: activeSubscription?.daysUntilExpiry || null
+            daysUntilExpiry: activeSubscription?.daysUntilExpiry || null,
         };
     }
     /**
      * Get all active subscriptions (admin only)
      */
     async getAllActiveSubscriptions() {
-        return await this.subscriptionRepository.find({
-            where: { status: (0, typeorm_1.In)(['active', 'trial']) },
-            relations: ['admin', 'plan'],
-            order: { createdAt: 'DESC' }
-        });
+        return await this.subscriptionRepository
+            .createQueryBuilder("subscription")
+            .leftJoinAndSelect("subscription.admin", "admin")
+            .leftJoinAndSelect("subscription.plan", "plan")
+            .where("subscription.status IN (:...statuses)", {
+            statuses: ["active", "trial"],
+        })
+            .andWhere("subscription.isDeleted = false")
+            .orderBy("subscription.createdAt", "DESC")
+            .getMany();
     }
     /**
      * Get expiring subscriptions
@@ -617,14 +677,15 @@ class SubscriptionService {
         today.setHours(0, 0, 0, 0);
         const thresholdDate = new Date(today);
         thresholdDate.setDate(thresholdDate.getDate() + daysThreshold);
-        return await this.subscriptionRepository.find({
-            where: {
-                status: 'active',
-                endDate: (0, typeorm_1.LessThanOrEqual)(thresholdDate)
-            },
-            relations: ['admin', 'plan'],
-            order: { endDate: 'ASC' }
-        });
+        return await this.subscriptionRepository
+            .createQueryBuilder("subscription")
+            .leftJoinAndSelect("subscription.admin", "admin")
+            .leftJoinAndSelect("subscription.plan", "plan")
+            .where("subscription.status = :status", { status: "active" })
+            .andWhere("subscription.endDate <= :thresholdDate", { thresholdDate })
+            .andWhere("subscription.isDeleted = false")
+            .orderBy("subscription.endDate", "ASC")
+            .getMany();
     }
     /**
      * Calculate end date based on billing cycle
@@ -632,13 +693,13 @@ class SubscriptionService {
     calculateEndDate(startDate, billingCycle) {
         const endDate = new Date(startDate);
         switch (billingCycle) {
-            case 'monthly':
+            case "monthly":
                 endDate.setMonth(endDate.getMonth() + 1);
                 break;
-            case 'quarterly':
+            case "quarterly":
                 endDate.setMonth(endDate.getMonth() + 3);
                 break;
-            case 'yearly':
+            case "yearly":
                 endDate.setFullYear(endDate.getFullYear() + 1);
                 break;
         }
@@ -653,28 +714,29 @@ class SubscriptionService {
             const subscriptionRepository = manager.getRepository(Subscription_1.Subscription);
             const payment = await paymentRepository.findOne({
                 where: { id: paymentId },
-                relations: ['subscription']
+                relations: ["subscription"],
             });
             if (!payment) {
-                throw new Error('Payment not found');
+                throw new Error("Payment not found");
             }
             if (!payment.canRefund()) {
-                throw new Error('Payment cannot be refunded');
+                throw new Error("Payment cannot be refunded");
             }
             const refundAmountFinal = refundAmount || Number(payment.amount);
             if (refundAmountFinal > Number(payment.amount)) {
-                throw new Error('Refund amount cannot exceed payment amount');
+                throw new Error("Refund amount cannot exceed payment amount");
             }
-            payment.status = 'refunded';
+            payment.status = "refunded";
             payment.refundAmount = refundAmountFinal;
             payment.refundedAt = new Date();
-            payment.refundReason = reason || 'Refund processed';
+            payment.refundReason = reason || "Refund processed";
             // Update subscription if fully refunded
-            if (payment.subscription && refundAmountFinal === Number(payment.amount)) {
-                payment.subscription.status = 'cancelled';
-                payment.subscription.paymentStatus = 'refunded';
+            if (payment.subscription &&
+                refundAmountFinal === Number(payment.amount)) {
+                payment.subscription.status = "cancelled";
+                payment.subscription.paymentStatus = "refunded";
                 payment.subscription.cancelledAt = new Date();
-                payment.subscription.cancellationReason = reason || 'Refunded';
+                payment.subscription.cancellationReason = reason || "Refunded";
                 await subscriptionRepository.save(payment.subscription);
             }
             return await paymentRepository.save(payment);
@@ -686,16 +748,16 @@ class SubscriptionService {
     async handleWebhook(gatewayTransactionId, status, metadata = {}) {
         // First try to find by direct gatewayTransactionId field
         let payment = await this.paymentRepository
-            .createQueryBuilder('payment')
-            .leftJoinAndSelect('payment.subscription', 'subscription')
-            .leftJoinAndSelect('payment.user', 'user')
+            .createQueryBuilder("payment")
+            .leftJoinAndSelect("payment.subscription", "subscription")
+            .leftJoinAndSelect("payment.user", "user")
             .where("payment.metadata->>'gatewayTransactionId' = :gatewayTransactionId", { gatewayTransactionId })
             .getOne();
         // If not found, try to find by transactionId (fallback)
         if (!payment) {
             payment = await this.paymentRepository.findOne({
                 where: { transactionId: gatewayTransactionId },
-                relations: ['subscription', 'user']
+                relations: ["subscription", "user"],
             });
         }
         if (!payment) {
@@ -703,8 +765,8 @@ class SubscriptionService {
             return;
         }
         console.log(`Processing webhook for payment ${payment.id} with status: ${status}`);
-        const success = ['completed', 'succeeded', 'paid'].includes(status.toLowerCase());
-        const failed = ['failed', 'cancelled', 'declined'].includes(status.toLowerCase());
+        const success = ["completed", "succeeded", "paid"].includes(status.toLowerCase());
+        const failed = ["failed", "cancelled", "declined"].includes(status.toLowerCase());
         if (success) {
             await this.processPayment(payment.id, gatewayTransactionId, true);
         }
@@ -721,13 +783,13 @@ class SubscriptionService {
     async getPaymentByTransactionId(transactionId) {
         return await this.paymentRepository.findOne({
             where: { transactionId },
-            relations: ['subscription', 'user']
+            relations: ["subscription", "user"],
         });
     }
     async getPaymentById(id) {
         return await this.paymentRepository.findOne({
             where: { id },
-            relations: ['subscription', 'user']
+            relations: ["subscription", "user"],
         });
     }
     /**
@@ -735,15 +797,15 @@ class SubscriptionService {
      */
     async updateUsageTracking(subscriptionId, usage) {
         const subscription = await this.subscriptionRepository.findOne({
-            where: { id: subscriptionId }
+            where: { id: subscriptionId },
         });
         if (!subscription) {
-            throw new Error('Subscription not found');
+            throw new Error("Subscription not found");
         }
         subscription.metadata = {
             ...subscription.metadata,
             usage,
-            lastUsageUpdate: new Date().toISOString()
+            lastUsageUpdate: new Date().toISOString(),
         };
         await this.subscriptionRepository.save(subscription);
     }
@@ -755,12 +817,12 @@ class SubscriptionService {
         today.setHours(23, 59, 59, 999);
         const expiredSubscriptions = await this.subscriptionRepository.find({
             where: {
-                status: (0, typeorm_1.In)(['active', 'trial']),
-                endDate: (0, typeorm_1.LessThanOrEqual)(today)
-            }
+                status: (0, typeorm_1.In)(["active", "trial"]),
+                endDate: (0, typeorm_1.LessThanOrEqual)(today),
+            },
         });
         for (const subscription of expiredSubscriptions) {
-            subscription.status = 'expired';
+            subscription.status = "expired";
             await this.subscriptionRepository.save(subscription);
         }
         console.log(`Processed ${expiredSubscriptions.length} expired subscriptions`);

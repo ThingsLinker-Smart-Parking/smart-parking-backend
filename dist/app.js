@@ -31,6 +31,7 @@ const parking_1 = __importDefault(require("./routes/parking"));
 const subscriptionService_1 = require("./services/subscriptionService");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
+app.set("trust proxy", process.env.TRUST_PROXY ?? "1");
 // Swagger setup
 const specs = (0, swagger_jsdoc_1.default)(swagger_1.default);
 // CORS Configuration
@@ -39,38 +40,41 @@ const corsOptions = {
         if (!origin)
             return callback(null, true);
         const allowedOrigins = [
-            'http://localhost:3000',
-            'http://localhost:3001',
-            'http://localhost:5000',
-            'http://localhost:8080',
-            'http://127.0.0.1:3000',
-            'http://127.0.0.1:3001',
-            'http://127.0.0.1:5000',
-            'http://127.0.0.1:8080',
-            'capacitor://localhost',
-            'ionic://localhost',
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://localhost:5000",
+            "http://localhost:8080",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001",
+            "http://127.0.0.1:5000",
+            "http://127.0.0.1:8080",
+            "capacitor://localhost",
+            "ionic://localhost",
         ];
-        if (allowedOrigins.indexOf(origin) !== -1 || origin.includes('localhost')) {
+        if (allowedOrigins.indexOf(origin) !== -1 || origin.includes("localhost")) {
             callback(null, true);
         }
         else {
-            loggerService_1.logger.security('CORS request blocked', 'medium', { origin, blockedBy: 'CORS policy' });
-            callback(new Error('Not allowed by CORS'));
+            loggerService_1.logger.security("CORS request blocked", "medium", {
+                origin,
+                blockedBy: "CORS policy",
+            });
+            callback(new Error("Not allowed by CORS"));
         }
     },
     credentials: true,
-    optionsSuccessStatus: 200
+    optionsSuccessStatus: 200,
 };
 // Security and Performance Middleware
 app.use((0, compression_1.default)({
     filter: (req, res) => {
-        if (req.headers['x-no-compression']) {
+        if (req.headers["x-no-compression"]) {
             return false;
         }
         return compression_1.default.filter(req, res);
     },
     threshold: 1024, // Only compress responses above 1KB
-    level: 6 // Compression level (1-9, 6 is good balance)
+    level: 6, // Compression level (1-9, 6 is good balance)
 }));
 app.use((0, helmet_1.default)({
     contentSecurityPolicy: {
@@ -83,8 +87,8 @@ app.use((0, helmet_1.default)({
             connectSrc: ["'self'"],
             frameAncestors: ["'none'"],
             objectSrc: ["'none'"],
-            upgradeInsecureRequests: []
-        }
+            upgradeInsecureRequests: [],
+        },
     },
     crossOriginEmbedderPolicy: false,
     crossOriginOpenerPolicy: false,
@@ -92,18 +96,18 @@ app.use((0, helmet_1.default)({
     hsts: {
         maxAge: 31536000, // 1 year
         includeSubDomains: true,
-        preload: true
+        preload: true,
     },
     noSniff: true,
     xssFilter: true,
-    referrerPolicy: { policy: "strict-origin-when-cross-origin" }
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
 }));
 app.use((0, cors_1.default)(corsOptions));
 // Structured logging middleware (replaces Morgan)
 app.use(logging_1.requestLoggingMiddleware);
 app.use(logging_1.securityLoggingMiddleware);
 app.use(logging_1.rateLimitLoggingMiddleware);
-app.use(express_1.default.json({ limit: '10mb' }));
+app.use(express_1.default.json({ limit: "10mb" }));
 app.use(express_1.default.urlencoded({ extended: true }));
 // Rate Limiting Configuration
 const createRateLimiter = (windowMs, max, message) => {
@@ -113,43 +117,43 @@ const createRateLimiter = (windowMs, max, message) => {
         message: {
             success: false,
             message,
-            error: 'RATE_LIMIT_EXCEEDED'
+            error: "RATE_LIMIT_EXCEEDED",
         },
         standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
         legacyHeaders: false, // Disable the `X-RateLimit-*` headers
         // Skip successful requests for rate limiting (optional)
         skipSuccessfulRequests: false,
-        // Skip failed requests for rate limiting (optional)  
-        skipFailedRequests: false
+        // Skip failed requests for rate limiting (optional)
+        skipFailedRequests: false,
     });
 };
 // Different rate limits for different endpoint types
 const generalApiLimiter = createRateLimiter(15 * 60 * 1000, // 15 minutes
 100, // Limit each IP to 100 requests per 15 minutes for general API endpoints
-'Too many requests from this IP, please try again after 15 minutes');
-const authLimiter = createRateLimiter(15 * 60 * 1000, // 15 minutes  
+"Too many requests from this IP, please try again after 15 minutes");
+const authLimiter = createRateLimiter(15 * 60 * 1000, // 15 minutes
 20, // Limit each IP to 20 requests per 15 minutes for auth endpoints
-'Too many authentication attempts, please try again after 15 minutes');
+"Too many authentication attempts, please try again after 15 minutes");
 // Strict limiter for sensitive endpoints (can be used for admin operations)
 const strictLimiter = createRateLimiter(5 * 60 * 1000, // 5 minutes
 10, // Limit each IP to 10 requests per 5 minutes for sensitive endpoints
-'Too many requests for sensitive operations, please try again after 5 minutes');
+"Too many requests for sensitive operations, please try again after 5 minutes");
 // Apply rate limiting middleware
-app.use('/api/auth', authLimiter); // Stricter limit for authentication
-app.use('/api/health/detailed', strictLimiter); // Strict limit for sensitive admin endpoints
-app.use('/api', generalApiLimiter); // General limit for all API endpoints
+app.use("/api/auth", authLimiter); // Stricter limit for authentication
+app.use("/api/health/detailed", strictLimiter); // Strict limit for sensitive admin endpoints
+app.use("/api", generalApiLimiter); // General limit for all API endpoints
 // Swagger UI - MUST come before routes
-app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(specs, {
+app.use("/api-docs", swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(specs, {
     explorer: true,
-    customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'Smart Parking API Docs'
+    customCss: ".swagger-ui .topbar { display: none }",
+    customSiteTitle: "Smart Parking API Docs",
 }));
 // Handle preflight requests
 app.options(/.*/, (0, cors_1.default)(corsOptions));
 // Replace with specific paths:
 //app.options(/api*/, cors(corsOptions));
 // API Versioning
-const API_VERSION = process.env.API_VERSION || 'v1';
+const API_VERSION = process.env.API_VERSION || "v1";
 // Simplified Routes with versioning
 app.use(`/api/${API_VERSION}/auth`, auth_1.default);
 app.use(`/api/${API_VERSION}/nodes`, node_1.default);
@@ -161,30 +165,33 @@ app.use(`/api/${API_VERSION}/subscriptions`, subscription_1.default);
 app.use(`/api/${API_VERSION}/subscription-plans`, subscriptionPlan_1.default);
 app.use(`/api/${API_VERSION}/parking`, parking_1.default);
 // Legacy routes (without versioning) for backward compatibility
-app.use('/api/auth', auth_1.default);
-app.use('/api/nodes', node_1.default);
-app.use('/api/gateways', gateway_1.default);
-app.use('/api/parking-slots', parkingSlot_1.default);
-app.use('/api/parking-lots', parkingLot_1.default);
-app.use('/api/floors', floor_1.default);
-app.use('/api/subscriptions', subscription_1.default);
-app.use('/api/subscription-plans', subscriptionPlan_1.default);
-app.use('/api/parking', parking_1.default);
+app.use("/api/auth", auth_1.default);
+app.use("/api/nodes", node_1.default);
+app.use("/api/gateways", gateway_1.default);
+app.use("/api/parking-slots", parkingSlot_1.default);
+app.use("/api/parking-lots", parkingLot_1.default);
+app.use("/api/floors", floor_1.default);
+app.use("/api/subscriptions", subscription_1.default);
+app.use("/api/subscription-plans", subscriptionPlan_1.default);
+app.use("/api/parking", parking_1.default);
 // Health routes (unversioned)
-app.use('/api/health', health_1.default);
+app.use("/api/health", health_1.default);
 // Test endpoint without authentication
-app.get('/api/test', (_, res) => {
+app.get("/api/test", (_, res) => {
     res.json({
-        message: 'Server is working!',
+        message: "Server is working!",
         timestamp: new Date().toISOString(),
-        swagger: 'http://localhost:3000/api-docs'
+        swagger: "http://localhost:3000/api-docs",
     });
 });
 // Redirect root to API docs
-app.get('/', (_, res) => {
-    res.redirect('/api-docs');
+app.get("/", (_, res) => {
+    res.redirect("/api-docs");
 });
-app.all('/payments/cashfree/return', async (req, res) => {
+app.all("/payments/cashfree/return", async (req, res) => {
+    if (req.method === "HEAD") {
+        return res.status(200).end();
+    }
     const payload = {};
     const assignEntries = (source) => {
         if (!source) {
@@ -205,16 +212,20 @@ app.all('/payments/cashfree/return', async (req, res) => {
         }
     };
     assignEntries(req.query);
-    if ((req.method === 'POST' || req.method === 'PUT') && req.body && typeof req.body === 'object' && !Array.isArray(req.body)) {
+    if ((req.method === "POST" || req.method === "PUT") &&
+        req.body &&
+        typeof req.body === "object" &&
+        !Array.isArray(req.body)) {
         assignEntries(req.body);
     }
-    const forwardedProto = req.get('x-forwarded-proto');
-    const forwardedHost = req.get('x-forwarded-host');
-    const requestHost = forwardedHost ?? req.get('host');
-    const protocol = forwardedProto?.split(',')[0]?.trim() || req.protocol;
-    const baseAppUrl = requestHost ? `${protocol}://${requestHost}`.replace(/\/$/, '') : '';
-    const subscriptionPath = '/admin/subscribe-plan';
-    const dashboardPath = '/admin/dashboard';
+    const forwardedProto = req.get("x-forwarded-proto");
+    const forwardedHost = req.get("x-forwarded-host");
+    const requestHost = forwardedHost ?? req.get("host");
+    const protocol = forwardedProto?.split(",")[0]?.trim() || req.protocol;
+    // Frontend application URLs
+    const frontendBaseUrl = process.env.FRONTEND_URL || "https://smart-parking-backend-production-5449.up.railway.app";
+    const subscriptionPath = "/admin/subscribe-plan";
+    const dashboardPath = "/admin/dashboard";
     const getValue = (...keys) => {
         for (const key of keys) {
             const value = payload[key];
@@ -223,22 +234,24 @@ app.all('/payments/cashfree/return', async (req, res) => {
             }
             const str = Array.isArray(value) ? String(value[0]) : String(value);
             const trimmed = str.trim();
-            if (trimmed && trimmed.toLowerCase() !== 'undefined' && trimmed.toLowerCase() !== 'null') {
+            if (trimmed &&
+                trimmed.toLowerCase() !== "undefined" &&
+                trimmed.toLowerCase() !== "null") {
                 return trimmed;
             }
         }
-        return '';
+        return "";
     };
-    const orderId = getValue('order_id', 'orderId');
-    const referenceId = getValue('reference_id', 'referenceId', 'cfPaymentId', 'paymentId');
-    const paymentSessionId = getValue('payment_session_id', 'paymentSessionId');
-    const statusRaw = getValue('txStatus', 'transaction_status', 'status');
-    let displayStatus = statusRaw || 'PENDING';
-    let flowStatus = 'PENDING';
-    let message = '';
+    const orderId = getValue("order_id", "orderId");
+    const referenceId = getValue("reference_id", "referenceId", "cfPaymentId", "paymentId");
+    const paymentSessionId = getValue("payment_session_id", "paymentSessionId");
+    const statusRaw = getValue("txStatus", "transaction_status", "status");
+    let displayStatus = statusRaw || "PENDING";
+    let flowStatus = "PENDING";
+    let message = "";
     if (!orderId && !paymentSessionId) {
-        flowStatus = 'ERROR';
-        message = 'Missing order reference. Please contact support.';
+        flowStatus = "ERROR";
+        message = "Missing order reference. Please contact support.";
     }
     else {
         try {
@@ -251,41 +264,63 @@ app.all('/payments/cashfree/return', async (req, res) => {
             });
             flowStatus = finalizeResult.status;
             displayStatus = finalizeResult.cashfreeStatus || displayStatus;
-            message = finalizeResult.message || '';
+            message = finalizeResult.message || "";
         }
         catch (error) {
-            flowStatus = 'ERROR';
-            message = error instanceof Error ? error.message : 'Unexpected error occurred while processing payment.';
+            flowStatus = "ERROR";
+            message =
+                error instanceof Error
+                    ? error.message
+                    : "Unexpected error occurred while processing payment.";
         }
     }
     const searchParams = new url_1.URLSearchParams();
+    // Use Flutter app's expected parameter names
+    // If Cashfree indicates success, trust that even if payment not found in our DB
+    const cashfreeIndicatesSuccess = statusRaw &&
+        (statusRaw.toUpperCase() === "SUCCESS" ||
+            statusRaw.toUpperCase() === "PAID");
+    const cashfreeIndicatesFailure = statusRaw &&
+        (statusRaw.toUpperCase() === "FAILED" ||
+            statusRaw.toUpperCase() === "CANCELLED" ||
+            statusRaw.toUpperCase() === "USER_DROPPED");
+    if (flowStatus === "SUCCESS" || cashfreeIndicatesSuccess) {
+        searchParams.set("payment_success", "true");
+    }
+    else if (flowStatus === "FAILED" ||
+        flowStatus === "ERROR" ||
+        cashfreeIndicatesFailure) {
+        searchParams.set("payment_failed", "true");
+    }
+    // Keep both old and new parameter names for compatibility
     if (flowStatus) {
-        searchParams.set('status', flowStatus.toLowerCase());
+        searchParams.set("status", flowStatus.toLowerCase());
     }
     if (displayStatus) {
-        searchParams.set('cashfreeStatus', displayStatus.toUpperCase());
+        searchParams.set("cashfreeStatus", displayStatus.toUpperCase());
     }
     if (orderId) {
-        searchParams.set('orderId', orderId);
+        searchParams.set("order_id", orderId); // Flutter expects 'order_id'
+        searchParams.set("orderId", orderId); // Keep for compatibility
     }
     if (referenceId) {
-        searchParams.set('referenceId', referenceId);
+        searchParams.set("referenceId", referenceId);
     }
     if (paymentSessionId) {
-        searchParams.set('paymentSessionId', paymentSessionId);
+        searchParams.set("paymentSessionId", paymentSessionId);
     }
     if (message) {
-        searchParams.set('message', message);
+        searchParams.set("message", message);
     }
     const queryString = searchParams.toString();
     const resolveUrl = (path) => {
-        const base = baseAppUrl || '';
-        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-        return `${base}${normalizedPath}${queryString ? `?${queryString}` : ''}`;
+        const base = frontendBaseUrl;
+        const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+        return `${base}${normalizedPath}${queryString ? `?${queryString}` : ""}`;
     };
-    const upperStatus = (displayStatus || '').toUpperCase();
+    const upperStatus = (displayStatus || "").toUpperCase();
     const resultPayload = {
-        success: flowStatus === 'SUCCESS',
+        success: flowStatus === "SUCCESS",
         status: flowStatus,
         cashfreeStatus: upperStatus,
         orderId,
@@ -295,29 +330,29 @@ app.all('/payments/cashfree/return', async (req, res) => {
         subscriptionUrl: resolveUrl(subscriptionPath),
         dashboardUrl: resolveUrl(dashboardPath),
     };
-    if (req.headers.accept?.includes('application/json')) {
+    if (req.headers.accept?.includes("application/json")) {
         return res.json(resultPayload);
     }
-    const headline = flowStatus === 'SUCCESS'
-        ? 'Payment Successful'
-        : flowStatus === 'FAILED'
-            ? 'Payment Failed'
-            : flowStatus === 'NOT_FOUND'
-                ? 'Payment Not Found'
-                : flowStatus === 'ERROR'
-                    ? 'Payment Processing Error'
-                    : 'Payment Pending';
+    const headline = flowStatus === "SUCCESS"
+        ? "Payment Successful"
+        : flowStatus === "FAILED"
+            ? "Payment Failed"
+            : flowStatus === "NOT_FOUND"
+                ? "Payment Not Found"
+                : flowStatus === "ERROR"
+                    ? "Payment Processing Error"
+                    : "Payment Pending";
     const description = message ||
-        (flowStatus === 'SUCCESS'
-            ? 'Your subscription has been activated. You can close this window.'
-            : flowStatus === 'FAILED'
-                ? 'The payment did not complete. Please return to the app and try again.'
-                : flowStatus === 'NOT_FOUND'
-                    ? 'We could not locate the payment record. Please contact support with your order reference.'
-                    : flowStatus === 'ERROR'
-                        ? 'We encountered an issue while verifying your payment. Please check again in a moment.'
-                        : 'The payment result is pending. The app will refresh once Cashfree confirms the status.');
-    const payloadJson = JSON.stringify(resultPayload).replace(/</g, '\u003c');
+        (flowStatus === "SUCCESS"
+            ? "Your subscription has been activated. You can close this window."
+            : flowStatus === "FAILED"
+                ? "The payment did not complete. Please return to the app and try again."
+                : flowStatus === "NOT_FOUND"
+                    ? "We could not locate the payment record. Please contact support with your order reference."
+                    : flowStatus === "ERROR"
+                        ? "We encountered an issue while verifying your payment. Please check again in a moment."
+                        : "The payment result is pending. The app will refresh once Cashfree confirms the status.");
+    const payloadJson = JSON.stringify(resultPayload).replace(/</g, "\u003c");
     return res.status(200).send(`<!DOCTYPE html>
   <html lang="en">
     <head>
@@ -337,8 +372,8 @@ app.all('/payments/cashfree/return', async (req, res) => {
       <div class="card">
         <h1>${headline}</h1>
         <p>${description}</p>
-        <div class="meta">Status: <strong>${upperStatus || 'UNKNOWN'}</strong></div>
-        ${orderId ? `<div class="meta">Order ID: ${orderId}</div>` : ''}
+        <div class="meta">Status: <strong>${upperStatus || "UNKNOWN"}</strong></div>
+        ${orderId ? `<div class="meta">Order ID: ${orderId}</div>` : ""}
       </div>
       <script>
         (function () {
@@ -353,33 +388,49 @@ app.all('/payments/cashfree/return', async (req, res) => {
           } catch (err) {
             console.warn('cashfreeResult postMessage failed', err);
           }
-          try { window.close(); } catch (_) {}
+
+          var targetUrl = null;
+          if (payload && payload.success && payload.dashboardUrl) {
+            targetUrl = payload.dashboardUrl;
+          } else if (payload && !payload.success && payload.subscriptionUrl) {
+            targetUrl = payload.subscriptionUrl;
+          }
+
+          if (targetUrl) {
+            setTimeout(function () {
+              try { window.location.replace(targetUrl); } catch (_) {}
+            }, 1000); // Reduced from 2000ms to 1000ms for faster redirect
+          } else {
+            setTimeout(function () {
+              try { window.close(); } catch (_) {}
+            }, 1500); // Reduced from 2500ms to 1500ms
+          }
         })();
       </script>
     </body>
   </html>`);
 });
 // Handle unhandled routes (must be after all other routes)
-app.all('*', errorHandler_1.handleNotFound);
+app.all("*", errorHandler_1.handleNotFound);
 // Global error handling middleware (must be last)
 app.use(errorHandler_1.globalErrorHandler);
 // Initialize Data Source and MQTT
 data_source_1.AppDataSource.initialize()
     .then(() => {
-    loggerService_1.logger.info('Database connection established', {
-        category: 'system',
-        database: 'PostgreSQL',
-        status: 'connected'
+    loggerService_1.logger.info("Database connection established", {
+        category: "system",
+        database: "PostgreSQL",
+        status: "connected",
     });
     // Initialize MQTT service for ChirpStack integration
-    require('./services/mqttService');
-    loggerService_1.logger.info('MQTT service initialized for ChirpStack integration');
+    // require('./services/mqttService'); // Temporarily disabled to fix 500 error
+    loggerService_1.logger.info("MQTT service initialization skipped (temporarily disabled)");
 })
     .catch((err) => {
-    loggerService_1.logger.error('Database connection failed', err, {
-        category: 'system',
-        database: 'PostgreSQL',
-        status: 'failed'
+    loggerService_1.logger.error("Database connection failed", err, {
+        category: "system",
+        database: "PostgreSQL",
+        status: "failed",
     });
 });
 exports.default = app;

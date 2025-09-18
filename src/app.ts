@@ -268,9 +268,8 @@ app.all("/payments/cashfree/return", async (req, res) => {
   const forwardedHost = req.get("x-forwarded-host");
   const requestHost = forwardedHost ?? req.get("host");
   const protocol = forwardedProto?.split(",")[0]?.trim() || req.protocol;
-  const baseAppUrl = requestHost
-    ? `${protocol}://${requestHost}`.replace(/\/$/, "")
-    : "";
+  // Frontend application URLs
+  const frontendBaseUrl = process.env.FRONTEND_URL || "https://smart-parking-backend-production-5449.up.railway.app";
   const subscriptionPath = "/admin/subscribe-plan";
   const dashboardPath = "/admin/dashboard";
 
@@ -380,7 +379,7 @@ app.all("/payments/cashfree/return", async (req, res) => {
 
   const queryString = searchParams.toString();
   const resolveUrl = (path: string) => {
-    const base = baseAppUrl || "";
+    const base = frontendBaseUrl;
     const normalizedPath = path.startsWith("/") ? path : `/${path}`;
     return `${base}${normalizedPath}${queryString ? `?${queryString}` : ""}`;
   };
@@ -472,13 +471,13 @@ app.all("/payments/cashfree/return", async (req, res) => {
 
           if (targetUrl) {
             setTimeout(function () {
-              try { window.location.href = targetUrl; } catch (_) {}
-            }, 2000);
+              try { window.location.replace(targetUrl); } catch (_) {}
+            }, 1000); // Reduced from 2000ms to 1000ms for faster redirect
+          } else {
+            setTimeout(function () {
+              try { window.close(); } catch (_) {}
+            }, 1500); // Reduced from 2500ms to 1500ms
           }
-
-          setTimeout(function () {
-            try { window.close(); } catch (_) {}
-          }, 2500);
         })();
       </script>
     </body>

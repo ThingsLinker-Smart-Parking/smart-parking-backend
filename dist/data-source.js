@@ -40,26 +40,31 @@ exports.AppDataSource = void 0;
 require("reflect-metadata");
 const typeorm_1 = require("typeorm");
 const entities = __importStar(require("./models"));
+const path_1 = __importDefault(require("path"));
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
+const isCompiled = __filename.endsWith(".js");
+const migrationsPath = isCompiled
+    ? path_1.default.join(__dirname, "database", "migrations", "*.js")
+    : path_1.default.join("src", "database", "migrations", "*.ts");
 exports.AppDataSource = new typeorm_1.DataSource({
-    type: 'postgres',
+    type: "postgres",
     host: process.env.DB_HOST,
-    port: parseInt(process.env.DB_PORT || '5432'),
+    port: parseInt(process.env.DB_PORT || "5432"),
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     synchronize: false, // Disabled for production safety
-    logging: process.env.DB_LOGGING === 'true',
+    logging: process.env.DB_LOGGING === "true",
     entities: Object.values(entities),
-    migrations: ['src/database/migrations/*.ts'],
-    migrationsTableName: 'migrations',
-    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+    migrations: [migrationsPath],
+    migrationsTableName: "migrations",
+    ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
     extra: {
         // Connection pool settings
-        max: parseInt(process.env.DB_POOL_MAX || '10'),
-        min: parseInt(process.env.DB_POOL_MIN || '1'),
-        idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000'),
-        connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || '10000'),
-    }
+        max: parseInt(process.env.DB_POOL_MAX || "10"),
+        min: parseInt(process.env.DB_POOL_MIN || "1"),
+        idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || "30000"),
+        connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || "10000"),
+    },
 });
