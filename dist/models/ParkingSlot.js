@@ -35,7 +35,7 @@ __decorate([
 ], ParkingSlot.prototype, "isReservable", void 0);
 __decorate([
     (0, typeorm_1.OneToOne)(() => Node_1.Node, node => node.parkingSlot, { nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", Node_1.Node)
 ], ParkingSlot.prototype, "node", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => ParkingStatusLog_1.ParkingStatusLog, statusLog => statusLog.parkingSlot),

@@ -344,6 +344,80 @@ router.post('/resend-otp', (0, validation_1.sanitize)(), (0, validation_1.valida
 router.get('/otp-config', auth_1.authenticateToken, (0, auth_1.requireRole)(['admin', 'super_admin']), authController_1.getOtpConfig);
 /**
  * @swagger
+ * /api/auth/profile:
+ *   get:
+ *     summary: Get user profile with subscription status
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *                     subscription:
+ *                       type: object
+ *                       properties:
+ *                         hasActiveSubscription:
+ *                           type: boolean
+ *                         status:
+ *                           type: string
+ *                           enum: [ACTIVE, EXPIRED, NO_SUBSCRIPTION]
+ *                         subscription:
+ *                           type: object
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/profile', auth_1.authenticateToken, authController_1.getUserProfile);
+/**
+ * @swagger
+ * /api/auth/refresh:
+ *   post:
+ *     summary: Refresh JWT token
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     token:
+ *                       type: string
+ *                       example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                 message:
+ *                   type: string
+ *                   example: "Token refreshed successfully"
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/refresh', auth_1.authenticateToken, authController_1.refreshToken);
+/**
+ * @swagger
  * /api/auth/email-config:
  *   get:
  *     summary: Get email service configuration (Admin only)

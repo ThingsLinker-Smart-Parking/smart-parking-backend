@@ -1,14 +1,15 @@
 import { Router } from 'express';
-import { 
-    getMyParkingLots, 
+import {
+    getMyParkingLots,
     getParkingLotById,
-    createParkingLot, 
+    createParkingLot,
     updateParkingLot,
     deleteParkingLot,
     assignGatewayToParkingLot,
     unassignGatewayFromParkingLot
 } from '../controllers/parkingLotController';
 import { authenticateToken, requireRole } from '../middleware/auth';
+import { requireActiveSubscription, checkFeatureLimit } from '../middleware/subscriptionAuth';
 
 const router = Router();
 
@@ -60,7 +61,7 @@ router.use(authenticateToken);
  *                 count:
  *                   type: integer
  */
-router.get('/', getMyParkingLots);
+router.get('/', requireActiveSubscription, getMyParkingLots);
 
 /**
  * @swagger
@@ -83,7 +84,7 @@ router.get('/', getMyParkingLots);
  *       404:
  *         description: Parking lot not found
  */
-router.get('/:id', getParkingLotById);
+router.get('/:id', requireActiveSubscription, getParkingLotById);
 
 /**
  * @swagger
@@ -115,7 +116,7 @@ router.get('/:id', getParkingLotById);
  *       400:
  *         description: Validation error
  */
-router.post('/', requireRole(['admin']), createParkingLot);
+router.post('/', requireRole(['admin']), requireActiveSubscription, checkFeatureLimit('parkingLots'), createParkingLot);
 
 /**
  * @swagger
@@ -148,7 +149,7 @@ router.post('/', requireRole(['admin']), createParkingLot);
  *       404:
  *         description: Parking lot not found
  */
-router.put('/:id', requireRole(['admin']), updateParkingLot);
+router.put('/:id', requireRole(['admin']), requireActiveSubscription, updateParkingLot);
 
 /**
  * @swagger
@@ -173,7 +174,7 @@ router.put('/:id', requireRole(['admin']), updateParkingLot);
  *       404:
  *         description: Parking lot not found
  */
-router.delete('/:id', requireRole(['admin']), deleteParkingLot);
+router.delete('/:id', requireRole(['admin']), requireActiveSubscription, deleteParkingLot);
 
 /**
  * @swagger
@@ -208,7 +209,7 @@ router.delete('/:id', requireRole(['admin']), deleteParkingLot);
  *       404:
  *         description: Parking lot or gateway not found
  */
-router.post('/:id/assign-gateway', requireRole(['admin']), assignGatewayToParkingLot);
+router.post('/:id/assign-gateway', requireRole(['admin']), requireActiveSubscription, assignGatewayToParkingLot);
 
 /**
  * @swagger
@@ -237,6 +238,6 @@ router.post('/:id/assign-gateway', requireRole(['admin']), assignGatewayToParkin
  *       404:
  *         description: Parking lot or gateway not found
  */
-router.post('/:id/unassign-gateway/:gatewayId', requireRole(['admin']), unassignGatewayFromParkingLot);
+router.post('/:id/unassign-gateway/:gatewayId', requireRole(['admin']), requireActiveSubscription, unassignGatewayFromParkingLot);
 
 export default router;

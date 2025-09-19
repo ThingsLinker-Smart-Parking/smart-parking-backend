@@ -34,6 +34,18 @@ __decorate([
     __metadata("design:type", String)
 ], ParkingLot.prototype, "address", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'float', nullable: true }),
+    __metadata("design:type", Number)
+], ParkingLot.prototype, "latitude", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'float', nullable: true }),
+    __metadata("design:type", Number)
+], ParkingLot.prototype, "longitude", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: true, nullable: true }),
+    __metadata("design:type", Boolean)
+], ParkingLot.prototype, "isActive", void 0);
+__decorate([
     (0, typeorm_1.OneToMany)(() => Gateway_1.Gateway, gateway => gateway.parkingLot),
     __metadata("design:type", Array)
 ], ParkingLot.prototype, "gateways", void 0);

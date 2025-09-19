@@ -5,6 +5,8 @@ import { User } from '../models/User';
 import { emailService } from '../services/emailService';
 import { otpService } from '../services/otpService';
 import { logger } from '../services/loggerService';
+import { AuthRequest } from '../middleware/auth';
+import { getSubscriptionStatus } from '../middleware/subscriptionAuth';
 
 // Input validation helper
 const validateEmail = (email: string): boolean => {
@@ -190,6 +192,7 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
         }
 
         // Generate JWT token
+        const jwtSecret: jwt.Secret = process.env.JWT_SECRET as string;
         const token = jwt.sign(
             { 
                 userId: user.id, 
@@ -197,8 +200,7 @@ export const login = async (req: Request, res: Response): Promise<Response> => {
                 role: user.role,
                 verified: user.isVerified 
             },
-            process.env.JWT_SECRET!,
-            { expiresIn: '24h' }
+            jwtSecret as any
         );
 
         // Remove sensitive data from response
@@ -478,9 +480,77 @@ export const getOtpConfig = async (req: Request, res: Response): Promise<Respons
         });
     } catch (error) {
         logger.error('Get OTP config error', error);
-        return res.status(500).json({ 
+        return res.status(500).json({
             success: false,
-            message: 'Internal server error' 
+            message: 'Internal server error'
+        });
+    }
+};
+
+// Get user profile with subscription status (for Flutter app)
+export const getUserProfile = async (req: AuthRequest, res: Response): Promise<Response> => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+        }
+
+        // Get subscription status
+        const subscriptionStatus = await getSubscriptionStatus(req.user.id);
+
+        // Remove sensitive data from user object
+        const { passwordHash, otp, otpExpiry, ...userProfile } = req.user;
+
+        return res.json({
+            success: true,
+            data: {
+                user: userProfile,
+                subscription: subscriptionStatus
+            }
+        });
+    } catch (error) {
+        logger.error('Get user profile error', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+};
+
+// Refresh JWT token
+export const refreshToken = async (req: AuthRequest, res: Response): Promise<Response> => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+        }
+
+        // Generate new JWT token
+        const jwtSecret: jwt.Secret = process.env.JWT_SECRET as string;
+        const token = jwt.sign(
+            {
+                userId: req.user.id,
+                email: req.user.email,
+                role: req.user.role,
+                verified: req.user.isVerified
+            },
+            jwtSecret as any
+        );
+
+        return res.json({
+            success: true,
+            data: { token },
+            message: 'Token refreshed successfully'
+        });
+    } catch (error) {
+        logger.error('Refresh token error', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error'
         });
     }
 };

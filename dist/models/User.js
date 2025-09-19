@@ -94,11 +94,11 @@ __decorate([
 ], User.prototype, "isVerified", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", String)
 ], User.prototype, "otp", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", Date)
 ], User.prototype, "otpExpiry", void 0);
 __decorate([
     (0, typeorm_1.Column)({ default: true }),

@@ -169,7 +169,7 @@ const testGetFloors = async () => {
     
     if (result.success && result.data.success && Array.isArray(result.data.data)) {
         logResult('Get Floors', true, `Retrieved ${result.data.count} floors`);
-        return true;
+        return true; 
     } else {
         logResult('Get Floors', false, result.message || 'Failed to get floors');
         return false;

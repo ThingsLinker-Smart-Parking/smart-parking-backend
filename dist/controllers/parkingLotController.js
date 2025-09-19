@@ -77,7 +77,7 @@ exports.getParkingLotById = (0, errorHandler_1.catchAsync)(async (req, res) => {
 });
 // Create new parking lot
 const createParkingLot = async (req, res) => {
-    const { name, address } = req.body;
+    const { name, address, latitude, longitude, isActive } = req.body;
     try {
         // Validation
         const validationErrors = (0, validation_1.validateRequired)({ name, address });
@@ -105,8 +105,14 @@ const createParkingLot = async (req, res) => {
         const newParkingLot = parkingLotRepository.create({
             name: name.trim(),
             address: address.trim(),
-            admin: req.user
+            latitude: latitude,
+            longitude: longitude,
+            isActive: isActive,
+            admin: req.user,
+            // Add other fields from req.body if they are part of ParkingLot entity
+            // For example: latitude: req.body.latitude, longitude: req.body.longitude, isActive: req.body.isActive
         });
+        loggerService_1.logger.debug('Creating new parking lot', { adminId: req.user.id, parkingLotData: newParkingLot });
         await parkingLotRepository.save(newParkingLot);
         return res.status(201).json({
             success: true,
@@ -115,7 +121,7 @@ const createParkingLot = async (req, res) => {
         });
     }
     catch (error) {
-        loggerService_1.logger.error('Create parking lot error:', error);
+        loggerService_1.logger.error('Create parking lot error:', error, { requestBody: req.body, userId: req.user?.id });
         return res.status(500).json({
             success: false,
             message: 'Failed to create parking lot'

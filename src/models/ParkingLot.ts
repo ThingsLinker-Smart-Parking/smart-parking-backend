@@ -17,6 +17,15 @@ export class ParkingLot {
     @Column({ type: 'text', nullable: true })
     address: string;
 
+    @Column({ type: 'float', nullable: true })
+    latitude: number;
+
+    @Column({ type: 'float', nullable: true })
+    longitude: number;
+
+    @Column({ default: true, nullable: true })
+    isActive: boolean;
+
     @OneToMany(() => Gateway, gateway => gateway.parkingLot)
     gateways: Gateway[];
 

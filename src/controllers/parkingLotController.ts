@@ -91,7 +91,7 @@ export const getParkingLotById = catchAsync(async (req: AuthRequest, res: Respon
 
 // Create new parking lot
 export const createParkingLot = async (req: AuthRequest, res: Response): Promise<Response> => {
-    const { name, address } = req.body;
+    const { name, address, latitude, longitude, isActive } = req.body;
 
     try {
         // Validation
@@ -124,8 +124,15 @@ export const createParkingLot = async (req: AuthRequest, res: Response): Promise
         const newParkingLot = parkingLotRepository.create({
             name: name.trim(),
             address: address.trim(),
-            admin: req.user!
+            latitude: latitude,
+            longitude: longitude,
+            isActive: isActive,
+            admin: req.user!,
+            // Add other fields from req.body if they are part of ParkingLot entity
+            // For example: latitude: req.body.latitude, longitude: req.body.longitude, isActive: req.body.isActive
         });
+
+        logger.debug('Creating new parking lot', { adminId: req.user!.id, parkingLotData: newParkingLot });
 
         await parkingLotRepository.save(newParkingLot);
         
@@ -135,7 +142,7 @@ export const createParkingLot = async (req: AuthRequest, res: Response): Promise
             data: newParkingLot
         });
     } catch (error) {
-        logger.error('Create parking lot error:', error);
+        logger.error('Create parking lot error:', error, { requestBody: req.body, userId: req.user?.id });
         return res.status(500).json({ 
             success: false, 
             message: 'Failed to create parking lot' 

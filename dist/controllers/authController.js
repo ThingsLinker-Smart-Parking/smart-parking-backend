@@ -3,13 +3,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getOtpConfig = exports.resendOtp = exports.resetPassword = exports.forgotPassword = exports.verifyOtp = exports.login = exports.signup = void 0;
+exports.refreshToken = exports.getUserProfile = exports.getOtpConfig = exports.resendOtp = exports.resetPassword = exports.forgotPassword = exports.verifyOtp = exports.login = exports.signup = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const data_source_1 = require("../data-source");
 const User_1 = require("../models/User");
 const emailService_1 = require("../services/emailService");
 const otpService_1 = require("../services/otpService");
 const loggerService_1 = require("../services/loggerService");
+const subscriptionAuth_1 = require("../middleware/subscriptionAuth");
 // Input validation helper
 const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -169,12 +170,13 @@ const login = async (req, res) => {
             });
         }
         // Generate JWT token
+        const jwtSecret = process.env.JWT_SECRET;
         const token = jsonwebtoken_1.default.sign({
             userId: user.id,
             email: user.email,
             role: user.role,
             verified: user.isVerified
-        }, process.env.JWT_SECRET, { expiresIn: '24h' });
+        }, jwtSecret);
         // Remove sensitive data from response
         const { passwordHash, otp, otpExpiry, ...userWithoutSensitiveData } = user;
         return res.json({
@@ -430,3 +432,65 @@ const getOtpConfig = async (req, res) => {
     }
 };
 exports.getOtpConfig = getOtpConfig;
+// Get user profile with subscription status (for Flutter app)
+const getUserProfile = async (req, res) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+        }
+        // Get subscription status
+        const subscriptionStatus = await (0, subscriptionAuth_1.getSubscriptionStatus)(req.user.id);
+        // Remove sensitive data from user object
+        const { passwordHash, otp, otpExpiry, ...userProfile } = req.user;
+        return res.json({
+            success: true,
+            data: {
+                user: userProfile,
+                subscription: subscriptionStatus
+            }
+        });
+    }
+    catch (error) {
+        loggerService_1.logger.error('Get user profile error', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+};
+exports.getUserProfile = getUserProfile;
+// Refresh JWT token
+const refreshToken = async (req, res) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+        }
+        // Generate new JWT token
+        const jwtSecret = process.env.JWT_SECRET;
+        const token = jsonwebtoken_1.default.sign({
+            userId: req.user.id,
+            email: req.user.email,
+            role: req.user.role,
+            verified: req.user.isVerified
+        }, jwtSecret);
+        return res.json({
+            success: true,
+            data: { token },
+            message: 'Token refreshed successfully'
+        });
+    }
+    catch (error) {
+        loggerService_1.logger.error('Refresh token error', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+};
+exports.refreshToken = refreshToken;

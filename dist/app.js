@@ -49,6 +49,7 @@ const corsOptions = {
             "http://127.0.0.1:8080",
             "capacitor://localhost",
             "ionic://localhost",
+            "https://smart-parking-backend-production-5449.up.railway.app",
         ];
         if (allowedOrigins.indexOf(origin) !== -1 || origin.includes("localhost")) {
             callback(null, true);
@@ -284,6 +285,8 @@ app.all("/payments/cashfree/return", async (req, res) => {
         const isSuccess = flowStatus === "SUCCESS" || cashfreeIndicatesSuccess;
         const redirectPath = isSuccess ? "/admin/dashboard" : "/admin/subscribe-plan";
         const deepLinkUrl = `${flutterAppScheme}:${redirectPath}?${isSuccess ? 'payment_success=true' : 'payment_failed=true'}&order_id=${orderId}&status=${isSuccess ? 'success' : 'failed'}`;
+        const webRedirectPath = `/#/payment/result?order_id=${orderId}&status=${isSuccess ? 'success' : 'failed'}`;
+        const redirectDelaySeconds = 5;
         return res.status(200).send(`<!DOCTYPE html>
 <html>
 <head>
@@ -293,7 +296,7 @@ app.all("/payments/cashfree/return", async (req, res) => {
 </head>
 <body>
     <h2>${isSuccess ? '✅ Payment Successful!' : '❌ Payment Failed'}</h2>
-    <p>${isSuccess ? 'Redirecting to dashboard...' : 'Redirecting to subscription page...'}</p>
+    <p>Redirecting in 5 seconds...</p>
     <p>Order ID: ${orderId}</p>
 
     <script>
@@ -336,11 +339,20 @@ app.all("/payments/cashfree/return", async (req, res) => {
                 } catch (e) {
                     console.log('Cannot close window');
                 }
-            }, 3000);
+            }, 5000);
         }
 
         // Execute immediately
         redirectToApp();
+
+        // Fallback redirect for web deployments
+        setTimeout(() => {
+            try {
+                window.location.replace('${webRedirectPath}');
+            } catch (e) {
+                console.log('Fallback redirect failed', e);
+            }
+        }, ${redirectDelaySeconds * 1000});
     </script>
 </body>
 </html>`);

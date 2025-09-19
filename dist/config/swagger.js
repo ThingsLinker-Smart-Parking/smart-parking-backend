@@ -43,11 +43,7 @@ The system now enforces a strict hierarchy: **User (Admin) → ParkingLot → Fl
         },
         servers: [
             {
-                url: `http://localhost:${process.env.PORT || 3001}`, // Use dynamic port
-                description: 'Development server'
-            },
-            {
-                url: 'http://localhost:5000/api',
+                url: 'https://smart-parking-backend-production-5449.up.railway.app',
                 description: 'Production server'
             }
         ],

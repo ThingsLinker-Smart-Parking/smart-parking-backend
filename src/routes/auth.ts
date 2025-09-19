@@ -1,12 +1,14 @@
 import { Router } from 'express';
-import { 
-    signup, 
-    login, 
-    verifyOtp, 
-    forgotPassword, 
-    resetPassword, 
+import {
+    signup,
+    login,
+    verifyOtp,
+    forgotPassword,
+    resetPassword,
     resendOtp,
-    getOtpConfig
+    getOtpConfig,
+    getUserProfile,
+    refreshToken
 } from '../controllers/authController';
 import { authenticateToken, requireRole } from '../middleware/auth';
 import { validateBody, sanitize, userSchemas } from '../validation';
@@ -323,6 +325,82 @@ router.post('/resend-otp', sanitize(), validateBody(userSchemas.resendOtp), rese
  *         description: Internal server error
  */
 router.get('/otp-config', authenticateToken, requireRole(['admin', 'super_admin']), getOtpConfig);
+
+/**
+ * @swagger
+ * /api/auth/profile:
+ *   get:
+ *     summary: Get user profile with subscription status
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *                     subscription:
+ *                       type: object
+ *                       properties:
+ *                         hasActiveSubscription:
+ *                           type: boolean
+ *                         status:
+ *                           type: string
+ *                           enum: [ACTIVE, EXPIRED, NO_SUBSCRIPTION]
+ *                         subscription:
+ *                           type: object
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/profile', authenticateToken, getUserProfile);
+
+/**
+ * @swagger
+ * /api/auth/refresh:
+ *   post:
+ *     summary: Refresh JWT token
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     token:
+ *                       type: string
+ *                       example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                 message:
+ *                   type: string
+ *                   example: "Token refreshed successfully"
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/refresh', authenticateToken, refreshToken);
 
 /**
  * @swagger

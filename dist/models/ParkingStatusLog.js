@@ -33,19 +33,19 @@ __decorate([
 ], ParkingStatusLog.prototype, "detectedAt", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'decimal', precision: 5, scale: 2, nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", Number)
 ], ParkingStatusLog.prototype, "distance", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'decimal', precision: 5, scale: 2, nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", Number)
 ], ParkingStatusLog.prototype, "percentage", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'integer', nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", Number)
 ], ParkingStatusLog.prototype, "batteryLevel", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
-    __metadata("design:type", Object)
+    __metadata("design:type", String)
 ], ParkingStatusLog.prototype, "signalQuality", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'json', nullable: true }),

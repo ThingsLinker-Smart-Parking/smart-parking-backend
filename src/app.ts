@@ -57,6 +57,7 @@ const corsOptions = {
       "http://127.0.0.1:8080",
       "capacitor://localhost",
       "ionic://localhost",
+      "https://smart-parking-backend-production-5449.up.railway.app",
     ];
 
     if (allowedOrigins.indexOf(origin) !== -1 || origin.includes("localhost")) {
@@ -95,8 +96,8 @@ app.use(
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "https:"],
-        scriptSrc: ["'self'"],
-        connectSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Allow inline scripts for Swagger
+        connectSrc: ["'self'", "http://localhost:3000", "https://smart-parking-backend-production-5449.up.railway.app"],
         frameAncestors: ["'none'"],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: [],
@@ -178,6 +179,15 @@ app.use(
     explorer: true,
     customCss: ".swagger-ui .topbar { display: none }",
     customSiteTitle: "Smart Parking API Docs",
+    swaggerOptions: {
+      supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch'],
+      tryItOutEnabled: true,
+      requestInterceptor: (req: any) => {
+        // Allow CORS requests from Swagger UI
+        req.headers['Access-Control-Allow-Origin'] = '*';
+        return req;
+      }
+    }
   }),
 );
 
@@ -215,11 +225,18 @@ app.use("/api/parking", parkingRoutes);
 app.use("/api/health", healthRoutes);
 
 // Test endpoint without authentication
-app.get("/api/test", (_, res) => {
+app.get("/api/test", (req, res) => {
+  const port = process.env.PORT || '3000';
+  const protocol = req.protocol;
+  const host = req.get('host') || 'localhost';
+  const baseUrl = `${protocol}://${host}`;
+
   res.json({
     message: "Server is working!",
     timestamp: new Date().toISOString(),
-    swagger: "http://localhost:3000/api-docs",
+    swagger: `${baseUrl}/api-docs`,
+    environment: process.env.NODE_ENV || 'development',
+    port: port
   });
 });
 
