@@ -980,3 +980,35 @@ export const getPaymentDetails = async (
     });
   }
 };
+
+// Get current user's subscription status
+export const getSubscriptionStatusController = async (
+  req: AuthRequest,
+  res: Response,
+): Promise<Response> => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    // Import the function from middleware
+    const { getSubscriptionStatus } = await import("../middleware/subscriptionAuth");
+
+    const status = await getSubscriptionStatus(req.user.id);
+
+    return res.json({
+      success: true,
+      message: "Subscription status retrieved successfully",
+      data: status
+    });
+  } catch (error) {
+    logger.error("Get subscription status error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};

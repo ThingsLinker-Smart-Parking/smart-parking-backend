@@ -364,9 +364,40 @@ export const getFloorStatistics = async (req: AuthRequest, res: Response): Promi
         });
     } catch (error) {
         logger.error('Get floor statistics error:', error);
-        return res.status(500).json({ 
-            success: false, 
-            message: 'Failed to fetch floor statistics' 
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch floor statistics'
+        });
+    }
+};
+
+// Get all floors for current admin
+export const getAllFloors = async (req: AuthRequest, res: Response): Promise<Response> => {
+    try {
+        const floorRepository = AppDataSource.getRepository(Floor);
+
+        const floors = await floorRepository.find({
+            where: {
+                parkingLot: { admin: { id: req.user!.id } }
+            },
+            relations: ['parkingLot', 'parkingSlots', 'parkingSlots.node'],
+            order: {
+                parkingLot: { name: 'ASC' },
+                level: 'ASC'
+            }
+        });
+
+        return res.json({
+            success: true,
+            message: 'All floors retrieved successfully',
+            data: floors,
+            count: floors.length
+        });
+    } catch (error) {
+        logger.error('Get all floors error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch floors'
         });
     }
 };

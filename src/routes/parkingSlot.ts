@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { 
+import {
     getParkingSlotsByFloor,
     getParkingSlotById,
     createParkingSlot,
@@ -8,7 +8,8 @@ import {
     assignNodeToParkingSlot,
     unassignNodeFromParkingSlot,
     getParkingSlotStatus,
-    bulkCreateParkingSlots
+    bulkCreateParkingSlots,
+    getAllParkingSlots
 } from '../controllers/parkingSlotController';
 import { authenticateToken, requireRole } from '../middleware/auth';
 
@@ -16,6 +17,42 @@ const router = Router();
 
 // All routes require authentication and admin role
 router.use(authenticateToken, requireRole(['admin']));
+
+/**
+ * @swagger
+ * /api/parking-slots:
+ *   get:
+ *     summary: Get all parking slots for current admin
+ *     tags: [Parking Slots]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All parking slots retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "All parking slots retrieved successfully"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/ParkingSlot'
+ *                 count:
+ *                   type: integer
+ *                   example: 50
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Access denied
+ */
+router.get('/', getAllParkingSlots);
 
 /**
  * @swagger

@@ -53,7 +53,7 @@ export const requireActiveSubscription = async (
     const activeSubscription = await subscriptionRepository
       .createQueryBuilder('subscription')
       .leftJoinAndSelect('subscription.plan', 'plan')
-      .where('subscription.userId = :userId', { userId: req.user.id })
+      .where('subscription.adminId = :userId', { userId: req.user.id })
       .andWhere('subscription.status = :status', { status: 'active' })
       .andWhere('subscription.endDate > :now', { now: new Date() })
       .orderBy('subscription.endDate', 'DESC')
@@ -182,13 +182,13 @@ async function getCurrentUsageCount(
   switch (feature) {
     case 'gateways':
       return dataSource.query(
-        'SELECT COUNT(*) as count FROM gateway WHERE "adminId" = $1 AND "isDeleted" = false',
+        'SELECT COUNT(*) as count FROM gateway WHERE "linkedAdminId" = $1',
         [userId]
       ).then(result => parseInt(result[0]?.count || '0'));
 
     case 'parkingLots':
       return dataSource.query(
-        'SELECT COUNT(*) as count FROM parking_lot WHERE "adminId" = $1 AND "isDeleted" = false',
+        'SELECT COUNT(*) as count FROM parking_lot WHERE "adminId" = $1',
         [userId]
       ).then(result => parseInt(result[0]?.count || '0'));
 
@@ -197,7 +197,7 @@ async function getCurrentUsageCount(
         `SELECT COUNT(f.*) as count
          FROM floor f
          INNER JOIN parking_lot pl ON f."parkingLotId" = pl.id
-         WHERE pl."adminId" = $1 AND f."isDeleted" = false AND pl."isDeleted" = false`,
+         WHERE pl."adminId" = $1`,
         [userId]
       ).then(result => parseInt(result[0]?.count || '0'));
 
@@ -207,7 +207,7 @@ async function getCurrentUsageCount(
          FROM parking_slot ps
          INNER JOIN floor f ON ps."floorId" = f.id
          INNER JOIN parking_lot pl ON f."parkingLotId" = pl.id
-         WHERE pl."adminId" = $1 AND ps."isDeleted" = false AND f."isDeleted" = false AND pl."isDeleted" = false`,
+         WHERE pl."adminId" = $1`,
         [userId]
       ).then(result => parseInt(result[0]?.count || '0'));
 
@@ -229,7 +229,7 @@ export const getSubscriptionStatus = async (userId: string) => {
   const activeSubscription = await subscriptionRepository
     .createQueryBuilder('subscription')
     .leftJoinAndSelect('subscription.plan', 'plan')
-    .where('subscription.userId = :userId', { userId })
+    .where('subscription.adminId = :userId', { userId })
     .andWhere('subscription.status = :status', { status: 'active' })
     .orderBy('subscription.endDate', 'DESC')
     .getOne();

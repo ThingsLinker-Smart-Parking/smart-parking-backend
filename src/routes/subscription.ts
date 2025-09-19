@@ -19,6 +19,7 @@ import {
   processRefund,
   handlePaymentWebhook,
   getPaymentDetails,
+  getSubscriptionStatusController,
 } from "../controllers/subscriptionController";
 import { authenticateToken, requireRole } from "../middleware/auth";
 
@@ -132,6 +133,61 @@ router.post("/", authenticateToken, createSubscription);
  *         description: Unauthorized
  */
 router.get("/current", authenticateToken, getUserSubscription);
+
+/**
+ * @swagger
+ * /api/subscriptions/status:
+ *   get:
+ *     summary: Get user's subscription status with detailed information
+ *     tags: [Subscriptions]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Subscription status retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Subscription status retrieved successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     hasActiveSubscription:
+ *                       type: boolean
+ *                       example: true
+ *                     status:
+ *                       type: string
+ *                       enum: [ACTIVE, EXPIRED, NO_SUBSCRIPTION]
+ *                       example: "ACTIVE"
+ *                     subscription:
+ *                       type: object
+ *                       properties:
+ *                         planName:
+ *                           type: string
+ *                           example: "Professional"
+ *                         daysRemaining:
+ *                           type: integer
+ *                           example: 25
+ *                         limits:
+ *                           type: object
+ *                           properties:
+ *                             gateways:
+ *                               type: integer
+ *                               example: 10
+ *                             parkingLots:
+ *                               type: integer
+ *                               example: 5
+ *       401:
+ *         description: Unauthorized
+ */
+router.get("/status", authenticateToken, getSubscriptionStatusController);
 
 /**
  * @swagger

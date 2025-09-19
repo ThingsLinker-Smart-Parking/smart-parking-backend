@@ -732,9 +732,45 @@ export const bulkCreateParkingSlots = async (req: AuthRequest, res: Response): P
         });
     } catch (error) {
         logger.error('Bulk create parking slots error:', error);
-        return res.status(500).json({ 
-            success: false, 
-            message: 'Failed to create parking slots' 
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to create parking slots'
+        });
+    }
+};
+
+// Get all parking slots for current admin
+export const getAllParkingSlots = async (req: AuthRequest, res: Response): Promise<Response> => {
+    try {
+        const parkingSlotRepository = AppDataSource.getRepository(ParkingSlot);
+
+        const parkingSlots = await parkingSlotRepository.find({
+            where: {
+                floor: {
+                    parkingLot: { admin: { id: req.user!.id } }
+                }
+            },
+            relations: ['floor', 'floor.parkingLot', 'node'],
+            order: {
+                floor: {
+                    parkingLot: { name: 'ASC' },
+                    level: 'ASC'
+                },
+                name: 'ASC'
+            }
+        });
+
+        return res.json({
+            success: true,
+            message: 'All parking slots retrieved successfully',
+            data: parkingSlots,
+            count: parkingSlots.length
+        });
+    } catch (error) {
+        logger.error('Get all parking slots error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch parking slots'
         });
     }
 };
