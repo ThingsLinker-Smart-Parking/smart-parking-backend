@@ -173,7 +173,7 @@ const testGetFloors = async () => {
     } else {
         logResult('Get Floors', false, result.message || 'Failed to get floors');
         return false;
-    }
+    } 
 };
 
 // Parking Slot Tests

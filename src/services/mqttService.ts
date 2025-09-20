@@ -185,7 +185,7 @@ export class MqttService {
         where: {
           chirpstackDeviceId: data.deviceInfo.devEui
         },
-        relations: ['parkingSlot', 'gateway']
+        relations: ['parkingSlot']
       });
 
       if (!node) {

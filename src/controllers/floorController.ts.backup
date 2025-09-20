@@ -40,7 +40,7 @@ export const getFloorsByParkingLot = async (req: AuthRequest, res: Response): Pr
         
         const floors = await floorRepository.find({
             where: { parkingLot: { id: parkingLot.id } },
-            relations: ['parkingSlots'],
+            relations: ['parkingSlots', 'parkingSlots.node'],
             order: { level: 'ASC' }
         });
         
@@ -79,7 +79,7 @@ export const getFloorById = async (req: AuthRequest, res: Response): Promise<Res
                 id: id,
                 parkingLot: { admin: { id: req.user!.id } }
             },
-            relations: ['parkingLot', 'parkingSlots']
+            relations: ['parkingLot', 'parkingSlots', 'parkingSlots.node']
         });
         
         if (!floor) {
@@ -324,7 +324,7 @@ export const getFloorStatistics = async (req: AuthRequest, res: Response): Promi
                 id: id,
                 parkingLot: { admin: { id: req.user!.id } }
             },
-            relations: ['parkingSlots']
+            relations: ['parkingSlots', 'parkingSlots.node']
         });
         
         if (!floor) {
@@ -380,7 +380,7 @@ export const getAllFloors = async (req: AuthRequest, res: Response): Promise<Res
             where: {
                 parkingLot: { admin: { id: req.user!.id } }
             },
-            relations: ['parkingLot', 'parkingSlots'],
+            relations: ['parkingLot', 'parkingSlots', 'parkingSlots.node'],
             order: {
                 parkingLot: { name: 'ASC' },
                 level: 'ASC'

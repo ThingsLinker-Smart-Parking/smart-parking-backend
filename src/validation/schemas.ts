@@ -247,36 +247,68 @@ export const parkingSlotSchemas = {
 // Node validation schemas
 export const nodeSchemas = {
   create: Joi.object({
-    nodeId: Joi.string()
+    name: Joi.string()
       .min(3)
-      .max(50)
+      .max(100)
       .required()
       .messages({
-        'string.min': 'Node ID must be at least 3 characters long',
-        'string.max': 'Node ID cannot exceed 50 characters',
-        'any.required': 'Node ID is required'
+        'string.min': 'Node name must be at least 3 characters long',
+        'string.max': 'Node name cannot exceed 100 characters',
+        'any.required': 'Node name is required'
       }),
-    sensorType: Joi.string()
-      .valid('ultrasonic', 'magnetic', 'camera', 'infrared')
-      .default('ultrasonic')
+    chirpstackDeviceId: Joi.string()
+      .min(16)
+      .max(16)
+      .pattern(/^[0-9a-fA-F]{16}$/)
+      .required()
       .messages({
-        'any.only': 'Sensor type must be one of: ultrasonic, magnetic, camera, infrared'
+        'string.min': 'ChirpStack Device ID must be exactly 16 characters',
+        'string.max': 'ChirpStack Device ID must be exactly 16 characters',
+        'string.pattern.base': 'ChirpStack Device ID must be a valid 16-character hexadecimal string',
+        'any.required': 'ChirpStack Device ID is required'
       }),
-    batteryLevel: Joi.number()
-      .min(0)
-      .max(100)
-      .default(100)
+    description: Joi.string()
+      .max(500)
+      .optional()
       .messages({
-        'number.min': 'Battery level cannot be negative',
-        'number.max': 'Battery level cannot exceed 100%'
+        'string.max': 'Description cannot exceed 500 characters'
+      }),
+    parkingSlotId: commonSchemas.uuid,
+    latitude: Joi.number()
+      .min(-90)
+      .max(90)
+      .optional()
+      .messages({
+        'number.min': 'Latitude must be between -90 and 90',
+        'number.max': 'Latitude must be between -90 and 90'
+      }),
+    longitude: Joi.number()
+      .min(-180)
+      .max(180)
+      .optional()
+      .messages({
+        'number.min': 'Longitude must be between -180 and 180',
+        'number.max': 'Longitude must be between -180 and 180'
       })
   }),
-  
+
+  updateStatus: Joi.object({
+    distance: Joi.number().min(0).optional(),
+    percentage: Joi.number().min(0).max(100).optional(),
+    batteryLevel: Joi.number().min(0).max(100).optional()
+  }).min(1).messages({
+    'object.min': 'At least one status field must be provided'
+  }),
+
   update: Joi.object({
-    sensorType: Joi.string().valid('ultrasonic', 'magnetic', 'camera', 'infrared').optional(),
-    batteryLevel: Joi.number().min(0).max(100).optional(),
+    name: Joi.string().min(3).max(100).optional(),
+    description: Joi.string().max(500).optional(),
+    latitude: Joi.number().min(-90).max(90).optional(),
+    longitude: Joi.number().min(-180).max(180).optional(),
     isActive: Joi.boolean().optional()
-  }).min(1)
+  }).min(1).messages({
+    'object.min': 'At least one field must be provided for update'
+  })
 };
 
 // Gateway validation schemas
@@ -544,7 +576,7 @@ export const paramSchemas = {
 export const iotSchemas = {
   sensorData: Joi.object({
     nodeId: Joi.string().required(),
-    gatewayId: Joi.string().required(),
+    gatewayId: Joi.string().optional(), // Gateway ID comes from ChirpStack data, not required in request
     sensorData: Joi.object({
       distance: Joi.number().min(0).optional(),
       occupied: Joi.boolean().required(),

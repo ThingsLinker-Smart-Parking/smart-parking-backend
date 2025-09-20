@@ -19,11 +19,11 @@ export const getMyParkingLots = async (req: AuthRequest, res: Response): Promise
         const parkingLotRepository = AppDataSource.getRepository(ParkingLot);
         let parkingLots;
         
-        // Admins see their own parking lots, users see all parking lots
-        if (req.user!.role === 'admin') {
+        // Admins and super_admins see their own parking lots, users see all parking lots
+        if (req.user!.role === 'admin' || req.user!.role === 'super_admin') {
             parkingLots = await parkingLotRepository.find({
                 where: { admin: { id: req.user!.id } },
-                relations: ['floors', 'floors.parkingSlots', 'floors.parkingSlots.node', 'gateways']
+                relations: ['floors', 'floors.parkingSlots', 'gateways']
             });
         } else {
             // Users can view all parking lots to find parking spots
@@ -68,7 +68,7 @@ export const getParkingLotById = catchAsync(async (req: AuthRequest, res: Respon
             id: id, 
             admin: { id: req.user!.id } 
         },
-        relations: ['floors', 'floors.parkingSlots', 'floors.parkingSlots.node', 'gateways']
+        relations: ['floors', 'floors.parkingSlots', 'gateways']
     });
     
     if (!parkingLot) {

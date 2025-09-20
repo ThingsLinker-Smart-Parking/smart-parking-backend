@@ -1,20 +1,16 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToOne, JoinColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 import { User } from './User';
 import { ParkingSlot } from './ParkingSlot';
-import { Gateway } from './Gateway';
 
 @Entity()
 @Index(['isActive', 'lastSeen'])
-@Index(['gateway', 'isActive'])
+@Index(['admin', 'isActive'])
 export class Node {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 
     @ManyToOne(() => User, user => user.nodes, { onDelete: 'CASCADE' })
     admin: User;
-
-    @ManyToOne(() => Gateway, gateway => gateway.nodes, { onDelete: 'CASCADE' })
-    gateway: Gateway;
 
     @OneToOne(() => ParkingSlot, parkingSlot => parkingSlot.node, { onDelete: 'CASCADE', nullable: false })
     @JoinColumn()

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getFloorStatistics = exports.deleteFloor = exports.updateFloor = exports.createFloor = exports.getFloorById = exports.getFloorsByParkingLot = void 0;
+exports.getAllFloors = exports.getFloorStatistics = exports.deleteFloor = exports.updateFloor = exports.createFloor = exports.getFloorById = exports.getFloorsByParkingLot = void 0;
 const loggerService_1 = require("../services/loggerService");
 const data_source_1 = require("../data-source");
 const Floor_1 = require("../models/Floor");
@@ -35,7 +35,7 @@ const getFloorsByParkingLot = async (req, res) => {
         }
         const floors = await floorRepository.find({
             where: { parkingLot: { id: parkingLot.id } },
-            relations: ['parkingSlots', 'parkingSlots.node'],
+            relations: ['parkingSlots'],
             order: { level: 'ASC' }
         });
         return res.json({
@@ -72,7 +72,7 @@ const getFloorById = async (req, res) => {
                 id: id,
                 parkingLot: { admin: { id: req.user.id } }
             },
-            relations: ['parkingLot', 'parkingSlots', 'parkingSlots.node']
+            relations: ['parkingLot', 'parkingSlots']
         });
         if (!floor) {
             return res.status(404).json({
@@ -292,7 +292,7 @@ const getFloorStatistics = async (req, res) => {
                 id: id,
                 parkingLot: { admin: { id: req.user.id } }
             },
-            relations: ['parkingSlots', 'parkingSlots.node']
+            relations: ['parkingSlots']
         });
         if (!floor) {
             return res.status(404).json({
@@ -334,3 +334,33 @@ const getFloorStatistics = async (req, res) => {
     }
 };
 exports.getFloorStatistics = getFloorStatistics;
+// Get all floors for current admin
+const getAllFloors = async (req, res) => {
+    try {
+        const floorRepository = data_source_1.AppDataSource.getRepository(Floor_1.Floor);
+        const floors = await floorRepository.find({
+            where: {
+                parkingLot: { admin: { id: req.user.id } }
+            },
+            relations: ['parkingLot', 'parkingSlots'],
+            order: {
+                parkingLot: { name: 'ASC' },
+                level: 'ASC'
+            }
+        });
+        return res.json({
+            success: true,
+            message: 'All floors retrieved successfully',
+            data: floors,
+            count: floors.length
+        });
+    }
+    catch (error) {
+        loggerService_1.logger.error('Get all floors error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch floors'
+        });
+    }
+};
+exports.getAllFloors = getAllFloors;

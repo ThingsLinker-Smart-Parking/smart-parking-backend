@@ -96,8 +96,8 @@ export const getParkingOverview = async (req: AuthRequest, res: Response): Promi
                     lastChirpStackUpdate: node.lastChirpStackUpdate
                 },
                 gateway: {
-                    id: node.gateway.id,
-                    name: node.gateway.name
+                    id: node.gatewayId,
+                    name: node.gatewayId ? 'ChirpStack Gateway' : 'Not Connected'
                 }
             });
         });
@@ -271,8 +271,8 @@ export const getSlotDetails = async (req: AuthRequest, res: Response): Promise<R
                 lastChirpStackUpdate: node.lastChirpStackUpdate,
                 slotStatus: node.slotStatus,
                 gateway: {
-                    id: node.gateway.id,
-                    name: node.gateway.name
+                    id: node.gatewayId,
+                    name: node.gatewayId ? 'ChirpStack Gateway' : 'Not Connected'
                 },
                 metadata: node.metadata
             } : null,

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.bulkCreateParkingSlots = exports.getParkingSlotStatus = exports.unassignNodeFromParkingSlot = exports.assignNodeToParkingSlot = exports.deleteParkingSlot = exports.updateParkingSlot = exports.createParkingSlot = exports.getParkingSlotById = exports.getParkingSlotsByFloor = void 0;
+exports.getAllParkingSlots = exports.bulkCreateParkingSlots = exports.getParkingSlotStatus = exports.unassignNodeFromParkingSlot = exports.assignNodeToParkingSlot = exports.deleteParkingSlot = exports.updateParkingSlot = exports.createParkingSlot = exports.getParkingSlotById = exports.getParkingSlotsByFloor = void 0;
 const data_source_1 = require("../data-source");
 const ParkingSlot_1 = require("../models/ParkingSlot");
 const Floor_1 = require("../models/Floor");
@@ -36,7 +36,7 @@ const getParkingSlotsByFloor = async (req, res) => {
         }
         const parkingSlots = await parkingSlotRepository.find({
             where: { floor: { id: floor.id } },
-            relations: ['node', 'statusLogs'],
+            relations: ['statusLogs'],
             order: { name: 'ASC' }
         });
         return res.json({
@@ -73,7 +73,7 @@ const getParkingSlotById = async (req, res) => {
                 id: id,
                 floor: { parkingLot: { admin: { id: req.user.id } } }
             },
-            relations: ['floor', 'floor.parkingLot', 'node', 'statusLogs']
+            relations: ['floor', 'floor.parkingLot', 'statusLogs']
         });
         if (!parkingSlot) {
             return res.status(404).json({
@@ -249,7 +249,7 @@ const deleteParkingSlot = async (req, res) => {
                 id: id,
                 floor: { parkingLot: { admin: { id: req.user.id } } }
             },
-            relations: ['node', 'statusLogs']
+            relations: ['statusLogs']
         });
         if (!parkingSlot) {
             return res.status(404).json({
@@ -313,7 +313,7 @@ const assignNodeToParkingSlot = async (req, res) => {
                 id: id,
                 floor: { parkingLot: { admin: { id: req.user.id } } }
             },
-            relations: ['node']
+            relations: []
         });
         if (!parkingSlot) {
             return res.status(404).json({
@@ -332,9 +332,9 @@ const assignNodeToParkingSlot = async (req, res) => {
         const node = await nodeRepository.findOne({
             where: {
                 id: nodeId,
-                gateway: { linkedAdmin: { id: req.user.id } }
+                admin: { id: req.user.id }
             },
-            relations: ['parkingSlot', 'gateway']
+            relations: ['parkingSlot']
         });
         if (!node) {
             return res.status(404).json({
@@ -387,7 +387,7 @@ const unassignNodeFromParkingSlot = async (req, res) => {
                 id: id,
                 floor: { parkingLot: { admin: { id: req.user.id } } }
             },
-            relations: ['node']
+            relations: []
         });
         if (!parkingSlot) {
             return res.status(404).json({
@@ -664,3 +664,38 @@ const bulkCreateParkingSlots = async (req, res) => {
     }
 };
 exports.bulkCreateParkingSlots = bulkCreateParkingSlots;
+// Get all parking slots for current admin
+const getAllParkingSlots = async (req, res) => {
+    try {
+        const parkingSlotRepository = data_source_1.AppDataSource.getRepository(ParkingSlot_1.ParkingSlot);
+        const parkingSlots = await parkingSlotRepository.find({
+            where: {
+                floor: {
+                    parkingLot: { admin: { id: req.user.id } }
+                }
+            },
+            relations: ['floor', 'floor.parkingLot'],
+            order: {
+                floor: {
+                    parkingLot: { name: 'ASC' },
+                    level: 'ASC'
+                },
+                name: 'ASC'
+            }
+        });
+        return res.json({
+            success: true,
+            message: 'All parking slots retrieved successfully',
+            data: parkingSlots,
+            count: parkingSlots.length
+        });
+    }
+    catch (error) {
+        loggerService_1.logger.error('Get all parking slots error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch parking slots'
+        });
+    }
+};
+exports.getAllParkingSlots = getAllParkingSlots;

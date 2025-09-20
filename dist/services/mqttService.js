@@ -121,7 +121,7 @@ class MqttService {
                 where: {
                     chirpstackDeviceId: data.deviceInfo.devEui
                 },
-                relations: ['parkingSlot', 'gateway']
+                relations: ['parkingSlot']
             });
             if (!node) {
                 loggerService_1.logger.warn('Node not found for ChirpStack device', {

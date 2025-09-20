@@ -1,7 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, OneToMany, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 import { ParkingLot } from './ParkingLot';
 import { User } from './User';
-import { Node } from './Node';
 
 @Entity()
 @Index(['isActive', 'createdAt'])
@@ -20,9 +19,6 @@ export class Gateway {
     // Super admin who created this gateway
     @ManyToOne(() => User, { nullable: true })
     createdBy: User;
-
-    @OneToMany(() => Node, node => node.gateway)
-    nodes: Node[];
 
     @Column({ unique: true })
     chirpstackGatewayId: string;

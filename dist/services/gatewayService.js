@@ -84,9 +84,8 @@ class GatewayService {
         if (gateway.isLinked) {
             throw new Error('Cannot delete a linked gateway. Unlink it first.');
         }
-        if (gateway.nodes && gateway.nodes.length > 0) {
-            throw new Error('Cannot delete gateway with active nodes. Remove nodes first.');
-        }
+        // Note: Nodes are no longer directly connected to gateways
+        // Gateway deletion check based on nodes is no longer needed
         await this.gatewayRepository.delete(id);
     }
     /**

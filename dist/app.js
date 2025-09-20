@@ -83,8 +83,8 @@ app.use((0, helmet_1.default)({
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
             imgSrc: ["'self'", "data:", "https:"],
-            scriptSrc: ["'self'"],
-            connectSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Allow inline scripts for Swagger
+            connectSrc: ["'self'", "http://localhost:3000", "https://smart-parking-backend-production-5449.up.railway.app"],
             frameAncestors: ["'none'"],
             objectSrc: ["'none'"],
             upgradeInsecureRequests: [],
@@ -147,6 +147,15 @@ app.use("/api-docs", swagger_ui_express_1.default.serve, swagger_ui_express_1.de
     explorer: true,
     customCss: ".swagger-ui .topbar { display: none }",
     customSiteTitle: "Smart Parking API Docs",
+    swaggerOptions: {
+        supportedSubmitMethods: ['get', 'post', 'put', 'delete', 'patch'],
+        tryItOutEnabled: true,
+        requestInterceptor: (req) => {
+            // Allow CORS requests from Swagger UI
+            req.headers['Access-Control-Allow-Origin'] = '*';
+            return req;
+        }
+    }
 }));
 // Handle preflight requests
 app.options(/.*/, (0, cors_1.default)(corsOptions));
@@ -177,11 +186,17 @@ app.use("/api/parking", parking_1.default);
 // Health routes (unversioned)
 app.use("/api/health", health_1.default);
 // Test endpoint without authentication
-app.get("/api/test", (_, res) => {
+app.get("/api/test", (req, res) => {
+    const port = process.env.PORT || '3000';
+    const protocol = req.protocol;
+    const host = req.get('host') || 'localhost';
+    const baseUrl = `${protocol}://${host}`;
     res.json({
         message: "Server is working!",
         timestamp: new Date().toISOString(),
-        swagger: "http://localhost:3000/api-docs",
+        swagger: `${baseUrl}/api-docs`,
+        environment: process.env.NODE_ENV || 'development',
+        port: port
     });
 });
 // Redirect root to API docs

@@ -8,6 +8,41 @@ const router = (0, express_1.Router)();
 router.use(auth_1.authenticateToken, (0, auth_1.requireRole)(['admin']));
 /**
  * @swagger
+ * /api/parking-slots:
+ *   get:
+ *     summary: Get all parking slots for current admin
+ *     tags: [Parking Slots]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All parking slots retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "All parking slots retrieved successfully"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/ParkingSlot'
+ *                 count:
+ *                   type: integer
+ *                   example: 50
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Access denied
+ */
+router.get('/', parkingSlotController_1.getAllParkingSlots);
+/**
+ * @swagger
  * components:
  *   schemas:
  *     ParkingSlot:

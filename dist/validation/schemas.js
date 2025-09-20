@@ -230,35 +230,66 @@ exports.parkingSlotSchemas = {
 // Node validation schemas
 exports.nodeSchemas = {
     create: joi_1.default.object({
-        nodeId: joi_1.default.string()
+        name: joi_1.default.string()
             .min(3)
-            .max(50)
+            .max(100)
             .required()
             .messages({
-            'string.min': 'Node ID must be at least 3 characters long',
-            'string.max': 'Node ID cannot exceed 50 characters',
-            'any.required': 'Node ID is required'
+            'string.min': 'Node name must be at least 3 characters long',
+            'string.max': 'Node name cannot exceed 100 characters',
+            'any.required': 'Node name is required'
         }),
-        sensorType: joi_1.default.string()
-            .valid('ultrasonic', 'magnetic', 'camera', 'infrared')
-            .default('ultrasonic')
+        chirpstackDeviceId: joi_1.default.string()
+            .min(16)
+            .max(16)
+            .pattern(/^[0-9a-fA-F]{16}$/)
+            .required()
             .messages({
-            'any.only': 'Sensor type must be one of: ultrasonic, magnetic, camera, infrared'
+            'string.min': 'ChirpStack Device ID must be exactly 16 characters',
+            'string.max': 'ChirpStack Device ID must be exactly 16 characters',
+            'string.pattern.base': 'ChirpStack Device ID must be a valid 16-character hexadecimal string',
+            'any.required': 'ChirpStack Device ID is required'
         }),
-        batteryLevel: joi_1.default.number()
-            .min(0)
-            .max(100)
-            .default(100)
+        description: joi_1.default.string()
+            .max(500)
+            .optional()
             .messages({
-            'number.min': 'Battery level cannot be negative',
-            'number.max': 'Battery level cannot exceed 100%'
+            'string.max': 'Description cannot exceed 500 characters'
+        }),
+        parkingSlotId: exports.commonSchemas.uuid,
+        latitude: joi_1.default.number()
+            .min(-90)
+            .max(90)
+            .optional()
+            .messages({
+            'number.min': 'Latitude must be between -90 and 90',
+            'number.max': 'Latitude must be between -90 and 90'
+        }),
+        longitude: joi_1.default.number()
+            .min(-180)
+            .max(180)
+            .optional()
+            .messages({
+            'number.min': 'Longitude must be between -180 and 180',
+            'number.max': 'Longitude must be between -180 and 180'
         })
     }),
+    updateStatus: joi_1.default.object({
+        distance: joi_1.default.number().min(0).optional(),
+        percentage: joi_1.default.number().min(0).max(100).optional(),
+        batteryLevel: joi_1.default.number().min(0).max(100).optional()
+    }).min(1).messages({
+        'object.min': 'At least one status field must be provided'
+    }),
     update: joi_1.default.object({
-        sensorType: joi_1.default.string().valid('ultrasonic', 'magnetic', 'camera', 'infrared').optional(),
-        batteryLevel: joi_1.default.number().min(0).max(100).optional(),
+        name: joi_1.default.string().min(3).max(100).optional(),
+        description: joi_1.default.string().max(500).optional(),
+        latitude: joi_1.default.number().min(-90).max(90).optional(),
+        longitude: joi_1.default.number().min(-180).max(180).optional(),
         isActive: joi_1.default.boolean().optional()
-    }).min(1)
+    }).min(1).messages({
+        'object.min': 'At least one field must be provided for update'
+    })
 };
 // Gateway validation schemas
 exports.gatewaySchemas = {
@@ -498,7 +529,7 @@ exports.paramSchemas = {
 exports.iotSchemas = {
     sensorData: joi_1.default.object({
         nodeId: joi_1.default.string().required(),
-        gatewayId: joi_1.default.string().required(),
+        gatewayId: joi_1.default.string().optional(), // Gateway ID comes from ChirpStack data, not required in request
         sensorData: joi_1.default.object({
             distance: joi_1.default.number().min(0).optional(),
             occupied: joi_1.default.boolean().required(),

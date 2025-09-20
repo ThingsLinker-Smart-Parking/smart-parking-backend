@@ -14,6 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run create:superadmin` - Create super admin user
 - `npm run migration:generate` - Generate new migration from entity changes
 - `npm run migration:run` - Run pending migrations
+- `npm run migration:show` - Show pending migrations
 - `npm run migration:revert` - Revert last migration
 - `npm run schema:sync` - Sync database schema (development only)
 
@@ -34,6 +35,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `node test-parking-apis.js` - Test parking operations APIs
 - `node test-webhook.js` - Test webhook functionality
 - `node test-pricing-demo.js` - Test pricing and subscription demo
+- `node test-all-api-issues.js` - Test all API endpoints for issues
 
 ### Development Setup
 1. Copy `env.example` to `.env` and configure
@@ -129,20 +131,20 @@ Key environment variables in `.env`:
 - API: `API_VERSION`, `BASE_URL`, `FLUTTER_APP_SCHEME`
 
 ### Development Notes
-- TypeORM synchronization is disabled by default (set `synchronize: false` in data-source.ts)
+- TypeORM synchronization is enabled in development (`synchronize: process.env.NODE_ENV === 'development'` in data-source.ts)
 - Database migrations managed via TypeORM CLI commands
 - Email service logs to console in development mode
 - CORS configured for local development origins
 - All entities exported from `src/models/index.ts`
 - Swagger UI available at root (`/`) and `/api-docs`
-- ESLint and TypeScript strict mode enabled for code quality
-- Jest configured for unit and integration testing
+- ESLint and TypeScript parser configured (strict mode disabled for flexibility)
+- Jest configured for unit and integration testing with 30s timeout and serial execution
 - Rate limiting and security middleware enabled by default
 - API versioning supported (default v1, legacy routes for backward compatibility)
 - Comprehensive payment flow handling with Flutter app deep linking
 
 ### Code Quality & Standards
-- **TypeScript**: Strict type checking enabled
+- **TypeScript**: Strict type checking disabled for flexibility (strict: false in tsconfig.json)
 - **Linting**: ESLint with TypeScript parser configured
 - **Testing**: Jest with supertest for API testing
 - **Security**: Helmet, CORS, rate limiting, input validation

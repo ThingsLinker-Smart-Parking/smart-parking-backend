@@ -30,7 +30,14 @@ const authenticateToken = async (req, res, next) => {
 exports.authenticateToken = authenticateToken;
 const requireRole = (roles) => {
     return (req, res, next) => {
-        if (!req.user || !roles.includes(req.user.role)) {
+        if (!req.user) {
+            return res.status(403).json({ message: 'Insufficient permissions' });
+        }
+        // Super admins can access any role-protected endpoint
+        if (req.user.role === 'super_admin') {
+            return next();
+        }
+        if (!roles.includes(req.user.role)) {
             return res.status(403).json({ message: 'Insufficient permissions' });
         }
         next();

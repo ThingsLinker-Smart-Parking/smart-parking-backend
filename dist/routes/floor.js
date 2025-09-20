@@ -8,6 +8,41 @@ const router = (0, express_1.Router)();
 router.use(auth_1.authenticateToken, (0, auth_1.requireRole)(['admin']));
 /**
  * @swagger
+ * /api/floors:
+ *   get:
+ *     summary: Get all floors for current admin
+ *     tags: [Floors]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All floors retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "All floors retrieved successfully"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Floor'
+ *                 count:
+ *                   type: integer
+ *                   example: 5
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Access denied
+ */
+router.get('/', floorController_1.getAllFloors);
+/**
+ * @swagger
  * components:
  *   schemas:
  *     Floor:

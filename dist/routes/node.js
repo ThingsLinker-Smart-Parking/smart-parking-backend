@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const nodeController_1 = require("../controllers/nodeController");
 const auth_1 = require("../middleware/auth");
+const validation_1 = require("../validation");
 const router = (0, express_1.Router)();
 /**
  * @swagger
@@ -29,7 +30,6 @@ const router = (0, express_1.Router)();
  *             required:
  *               - name
  *               - chirpstackDeviceId
- *               - gatewayId
  *               - parkingSlotId
  *             properties:
  *               name:
@@ -38,10 +38,9 @@ const router = (0, express_1.Router)();
  *                 type: string
  *               description:
  *                 type: string
- *               gatewayId:
- *                 type: string
  *               parkingSlotId:
  *                 type: string
+ *                 description: UUID of the parking slot this node will monitor
  *               latitude:
  *                 type: number
  *               longitude:
@@ -52,7 +51,7 @@ const router = (0, express_1.Router)();
  */
 router.route('/')
     .get(auth_1.authenticateToken, nodeController_1.getNodes)
-    .post(auth_1.authenticateToken, nodeController_1.createNode);
+    .post(auth_1.authenticateToken, (0, validation_1.validateBody)(validation_1.nodeSchemas.create), nodeController_1.createNode);
 /**
  * @swagger
  * /api/nodes/{nodeId}:
@@ -152,5 +151,5 @@ router.route('/:nodeId')
  *                       type: string
  *                       format: date-time
  */
-router.put('/:nodeId/status', auth_1.authenticateToken, nodeController_1.updateNodeStatus);
+router.put('/:nodeId/status', auth_1.authenticateToken, (0, validation_1.validateBody)(validation_1.nodeSchemas.updateStatus), nodeController_1.updateNodeStatus);
 exports.default = router;

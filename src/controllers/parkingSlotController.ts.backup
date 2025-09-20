@@ -41,7 +41,7 @@ export const getParkingSlotsByFloor = async (req: AuthRequest, res: Response): P
         
         const parkingSlots = await parkingSlotRepository.find({
             where: { floor: { id: floor.id } },
-            relations: ['statusLogs'],
+            relations: ['node', 'statusLogs'],
             order: { name: 'ASC' }
         });
         
@@ -80,7 +80,7 @@ export const getParkingSlotById = async (req: AuthRequest, res: Response): Promi
                 id: id,
                 floor: { parkingLot: { admin: { id: req.user!.id } } }
             },
-            relations: ['floor', 'floor.parkingLot', 'statusLogs']
+            relations: ['floor', 'floor.parkingLot', 'node', 'statusLogs']
         });
         
         if (!parkingSlot) {
@@ -276,7 +276,7 @@ export const deleteParkingSlot = async (req: AuthRequest, res: Response): Promis
                 id: id,
                 floor: { parkingLot: { admin: { id: req.user!.id } } }
             },
-            relations: ['statusLogs']
+            relations: ['node', 'statusLogs']
         });
         
         if (!parkingSlot) {
@@ -348,7 +348,7 @@ export const assignNodeToParkingSlot = async (req: AuthRequest, res: Response): 
                 id: id,
                 floor: { parkingLot: { admin: { id: req.user!.id } } }
             },
-            relations: []
+            relations: ['node']
         });
         
         if (!parkingSlot) {
@@ -431,7 +431,7 @@ export const unassignNodeFromParkingSlot = async (req: AuthRequest, res: Respons
                 id: id,
                 floor: { parkingLot: { admin: { id: req.user!.id } } }
             },
-            relations: []
+            relations: ['node']
         });
         
         if (!parkingSlot) {
@@ -750,7 +750,7 @@ export const getAllParkingSlots = async (req: AuthRequest, res: Response): Promi
                     parkingLot: { admin: { id: req.user!.id } }
                 }
             },
-            relations: ['floor', 'floor.parkingLot'],
+            relations: ['floor', 'floor.parkingLot', 'node'],
             order: {
                 floor: {
                     parkingLot: { name: 'ASC' },

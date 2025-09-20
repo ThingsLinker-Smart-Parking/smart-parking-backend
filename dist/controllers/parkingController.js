@@ -88,8 +88,8 @@ const getParkingOverview = async (req, res) => {
                     lastChirpStackUpdate: node.lastChirpStackUpdate
                 },
                 gateway: {
-                    id: node.gateway.id,
-                    name: node.gateway.name
+                    id: node.gatewayId,
+                    name: node.gatewayId ? 'ChirpStack Gateway' : 'Not Connected'
                 }
             });
         });
@@ -248,8 +248,8 @@ const getSlotDetails = async (req, res) => {
                 lastChirpStackUpdate: node.lastChirpStackUpdate,
                 slotStatus: node.slotStatus,
                 gateway: {
-                    id: node.gateway.id,
-                    name: node.gateway.name
+                    id: node.gatewayId,
+                    name: node.gatewayId ? 'ChirpStack Gateway' : 'Not Connected'
                 },
                 metadata: node.metadata
             } : null,

@@ -1,7 +1,6 @@
 import { Response } from 'express';
 import { AppDataSource } from '../data-source';
 import { Node } from '../models/Node';
-import { Gateway } from '../models/Gateway';
 import { ParkingSlot } from '../models/ParkingSlot';
 import { AuthRequest } from '../middleware/auth';
 import { logger } from '../services/loggerService';
@@ -17,7 +16,7 @@ export const getNodes = async (req: AuthRequest, res: Response): Promise<Respons
             where: {
                 admin: { id: req.user!.id }
             },
-            relations: ['parkingSlot', 'parkingSlot.floor', 'parkingSlot.floor.parkingLot', 'gateway'],
+            relations: ['parkingSlot', 'parkingSlot.floor', 'parkingSlot.floor.parkingLot'],
             order: { createdAt: 'DESC' }
         });
 
@@ -40,8 +39,8 @@ export const getNodes = async (req: AuthRequest, res: Response): Promise<Respons
                 parkingLot: node.parkingSlot.floor.parkingLot.name
             },
             gateway: {
-                id: node.gateway.id,
-                name: node.gateway.name
+                id: node.gatewayId,
+                name: node.gatewayId ? 'ChirpStack Gateway' : 'Not Connected'
             },
             createdAt: node.createdAt
         }));
@@ -75,7 +74,7 @@ export const getNode = async (req: AuthRequest, res: Response): Promise<Response
                 id: nodeId,
                 admin: { id: req.user!.id }
             },
-            relations: ['parkingSlot', 'parkingSlot.floor', 'parkingSlot.floor.parkingLot', 'gateway']
+            relations: ['parkingSlot', 'parkingSlot.floor', 'parkingSlot.floor.parkingLot']
         });
 
         if (!node) {
@@ -107,8 +106,8 @@ export const getNode = async (req: AuthRequest, res: Response): Promise<Response
                     parkingLot: node.parkingSlot.floor.parkingLot.name
                 },
                 gateway: {
-                    id: node.gateway.id,
-                    name: node.gateway.name
+                    id: node.gatewayId,
+                    name: node.gatewayId ? 'ChirpStack Gateway' : 'Not Connected'
                 },
                 metadata: node.metadata,
                 createdAt: node.createdAt,
@@ -129,11 +128,10 @@ export const getNode = async (req: AuthRequest, res: Response): Promise<Response
  * Create a new node
  */
 export const createNode = async (req: AuthRequest, res: Response): Promise<Response> => {
-    const { name, chirpstackDeviceId, description, gatewayId, parkingSlotId, latitude, longitude } = req.body;
+    const { name, chirpstackDeviceId, description, parkingSlotId, latitude, longitude } = req.body;
 
     try {
         const nodeRepository = AppDataSource.getRepository(Node);
-        const gatewayRepository = AppDataSource.getRepository(Gateway);
         const parkingSlotRepository = AppDataSource.getRepository(ParkingSlot);
 
         // Check if ChirpStack Device ID is unique
@@ -145,21 +143,6 @@ export const createNode = async (req: AuthRequest, res: Response): Promise<Respo
             return res.status(400).json({
                 success: false,
                 message: 'ChirpStack Device ID already exists'
-            });
-        }
-
-        // Validate gateway exists and belongs to admin
-        const gateway = await gatewayRepository.findOne({
-            where: {
-                id: gatewayId
-            },
-            relations: ['linkedAdmin']
-        });
-
-        if (!gateway || gateway.linkedAdmin?.id !== req.user!.id) {
-            return res.status(404).json({
-                success: false,
-                message: 'Gateway not found'
             });
         }
 
@@ -198,7 +181,6 @@ export const createNode = async (req: AuthRequest, res: Response): Promise<Respo
             latitude,
             longitude,
             admin: { id: req.user!.id },
-            gateway,
             parkingSlot,
             metadata: {}
         });

@@ -13,7 +13,6 @@ exports.Gateway = void 0;
 const typeorm_1 = require("typeorm");
 const ParkingLot_1 = require("./ParkingLot");
 const User_1 = require("./User");
-const Node_1 = require("./Node");
 let Gateway = class Gateway {
     // Virtual properties
     get isOnline() {
@@ -46,10 +45,6 @@ __decorate([
     (0, typeorm_1.ManyToOne)(() => User_1.User, { nullable: true }),
     __metadata("design:type", User_1.User)
 ], Gateway.prototype, "createdBy", void 0);
-__decorate([
-    (0, typeorm_1.OneToMany)(() => Node_1.Node, node => node.gateway),
-    __metadata("design:type", Array)
-], Gateway.prototype, "nodes", void 0);
 __decorate([
     (0, typeorm_1.Column)({ unique: true }),
     __metadata("design:type", String)

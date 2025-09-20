@@ -13,7 +13,6 @@ exports.Node = void 0;
 const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
 const ParkingSlot_1 = require("./ParkingSlot");
-const Gateway_1 = require("./Gateway");
 let Node = class Node {
     // Simplified status properties
     get isOnline() {
@@ -81,10 +80,6 @@ __decorate([
     __metadata("design:type", User_1.User)
 ], Node.prototype, "admin", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => Gateway_1.Gateway, gateway => gateway.nodes, { onDelete: 'CASCADE' }),
-    __metadata("design:type", Gateway_1.Gateway)
-], Node.prototype, "gateway", void 0);
-__decorate([
     (0, typeorm_1.OneToOne)(() => ParkingSlot_1.ParkingSlot, parkingSlot => parkingSlot.node, { onDelete: 'CASCADE', nullable: false }),
     (0, typeorm_1.JoinColumn)(),
     __metadata("design:type", ParkingSlot_1.ParkingSlot)
@@ -132,5 +127,5 @@ __decorate([
 exports.Node = Node = __decorate([
     (0, typeorm_1.Entity)(),
     (0, typeorm_1.Index)(['isActive', 'lastSeen']),
-    (0, typeorm_1.Index)(['gateway', 'isActive'])
+    (0, typeorm_1.Index)(['admin', 'isActive'])
 ], Node);
