@@ -4,6 +4,7 @@ import { Node } from '../models/Node';
 import { ParkingSlot } from '../models/ParkingSlot';
 import { AuthRequest } from '../middleware/auth';
 import { logger } from '../services/loggerService';
+import { In } from 'typeorm';
 
 /**
  * Get all nodes for the authenticated admin
@@ -305,6 +306,74 @@ export const updateNodeStatus = async (req: AuthRequest, res: Response): Promise
         return res.status(500).json({
             success: false,
             message: 'Failed to update node status'
+        });
+    }
+};
+
+/**
+ * Get nodes by parking slot IDs
+ */
+export const getNodesBySlots = async (req: AuthRequest, res: Response): Promise<Response> => {
+    const { slotIds } = req.body; // Array of parking slot IDs
+
+    try {
+        if (!slotIds || !Array.isArray(slotIds) || slotIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'slotIds array is required and cannot be empty'
+            });
+        }
+
+        const nodeRepository = AppDataSource.getRepository(Node);
+
+        const nodes = await nodeRepository.find({
+            where: {
+                admin: { id: req.user!.id },
+                parkingSlot: { id: In(slotIds) }
+            },
+            relations: ['parkingSlot', 'parkingSlot.floor', 'parkingSlot.floor.parkingLot'],
+            order: { createdAt: 'DESC' }
+        });
+
+        const formattedNodes = nodes.map(node => ({
+            id: node.id,
+            name: node.name,
+            chirpstackDeviceId: node.chirpstackDeviceId,
+            description: node.description,
+            status: node.status,
+            isOnline: node.isOnline,
+            lastSeen: node.lastSeen,
+            batteryLevel: node.batteryLevel,
+            distance: node.distance,
+            percentage: node.percentage,
+            slotStatus: node.slotStatus,
+            parkingSlot: {
+                id: node.parkingSlot.id,
+                name: node.parkingSlot.name,
+                floor: node.parkingSlot.floor.name,
+                parkingLot: node.parkingSlot.floor.parkingLot.name
+            },
+            gateway: {
+                id: node.gatewayId,
+                name: node.gatewayId ? 'ChirpStack Gateway' : 'Not Connected'
+            },
+            metadata: node.metadata,
+            createdAt: node.createdAt,
+            updatedAt: node.updatedAt
+        }));
+
+        return res.json({
+            success: true,
+            message: `Found ${formattedNodes.length} nodes for ${slotIds.length} parking slots`,
+            data: formattedNodes,
+            count: formattedNodes.length
+        });
+
+    } catch (error) {
+        logger.error('Get nodes by slots error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to retrieve nodes by slots'
         });
     }
 };

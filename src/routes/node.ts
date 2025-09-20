@@ -4,7 +4,8 @@ import {
     getNode,
     createNode,
     updateNodeStatus,
-    deleteNode
+    deleteNode,
+    getNodesBySlots
 } from '../controllers/nodeController';
 import { authenticateToken as auth } from '../middleware/auth';
 import { validateBody, nodeSchemas } from '../validation';
@@ -170,5 +171,58 @@ router.route('/:nodeId')
  *                       format: date-time
  */
 router.put('/:nodeId/status', auth, validateBody(nodeSchemas.updateStatus), updateNodeStatus);
+
+/**
+ * @swagger
+ * /api/nodes/by-slots:
+ *   post:
+ *     summary: Get nodes by parking slot IDs
+ *     description: Retrieve nodes associated with specific parking slot IDs. Useful for getting sensor data for multiple slots at once.
+ *     tags: [Nodes]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - slotIds
+ *             properties:
+ *               slotIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 example: ["a1b2c3d4-e5f6-7890-abcd-ef1234567890", "b2c3d4e5-f6g7-8901-bcde-f23456789012"]
+ *                 description: Array of parking slot UUIDs to get nodes for
+ *     responses:
+ *       200:
+ *         description: Nodes retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: 'Found 3 nodes for 5 parking slots'
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Node'
+ *                 count:
+ *                   type: integer
+ *                   example: 3
+ *       400:
+ *         description: Invalid request - slotIds array required
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ */
+router.post('/by-slots', auth, getNodesBySlots);
 
 export default router;
