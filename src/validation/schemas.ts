@@ -301,10 +301,30 @@ export const nodeSchemas = {
   }),
 
   update: Joi.object({
-    name: Joi.string().min(3).max(100).optional(),
+    name: Joi.string().min(3).max(100).optional().messages({
+      'string.min': 'Node name must be at least 3 characters long',
+      'string.max': 'Node name cannot exceed 100 characters'
+    }),
+    chirpstackDeviceId: Joi.string()
+      .min(16)
+      .max(16)
+      .pattern(/^[0-9a-fA-F]{16}$/)
+      .optional()
+      .messages({
+        'string.min': 'ChirpStack Device ID must be exactly 16 characters',
+        'string.max': 'ChirpStack Device ID must be exactly 16 characters',
+        'string.pattern.base': 'ChirpStack Device ID must be a valid 16-character hexadecimal string'
+      }),
     description: Joi.string().max(500).optional(),
-    latitude: Joi.number().min(-90).max(90).optional(),
-    longitude: Joi.number().min(-180).max(180).optional(),
+    parkingSlotId: commonSchemas.uuid.optional(),
+    latitude: Joi.number().min(-90).max(90).optional().messages({
+      'number.min': 'Latitude must be between -90 and 90',
+      'number.max': 'Latitude must be between -90 and 90'
+    }),
+    longitude: Joi.number().min(-180).max(180).optional().messages({
+      'number.min': 'Longitude must be between -180 and 180',
+      'number.max': 'Longitude must be between -180 and 180'
+    }),
     isActive: Joi.boolean().optional()
   }).min(1).messages({
     'object.min': 'At least one field must be provided for update'

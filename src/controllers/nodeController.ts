@@ -7,18 +7,37 @@ import { logger } from '../services/loggerService';
 import { In } from 'typeorm';
 
 /**
- * Get all nodes for the authenticated admin
+ * Get all nodes for the authenticated admin with pagination and filtering
  */
 export const getNodes = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
         const nodeRepository = AppDataSource.getRepository(Node);
 
-        const nodes = await nodeRepository.find({
-            where: {
-                admin: { id: req.user!.id }
-            },
+        // Extract query parameters
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 20;
+        const slotId = req.query.slotId as string;
+
+        // Calculate skip for pagination
+        const skip = (page - 1) * limit;
+
+        // Build where clause
+        const whereClause: any = {
+            admin: { id: req.user!.id }
+        };
+
+        // Add slotId filter if provided
+        if (slotId) {
+            whereClause.parkingSlot = { id: slotId };
+        }
+
+        // Get nodes with pagination
+        const [nodes, total] = await nodeRepository.findAndCount({
+            where: whereClause,
             relations: ['parkingSlot', 'parkingSlot.floor', 'parkingSlot.floor.parkingLot'],
-            order: { createdAt: 'DESC' }
+            order: { createdAt: 'DESC' },
+            skip: skip,
+            take: limit
         });
 
         const formattedNodes = nodes.map(node => ({
@@ -46,10 +65,23 @@ export const getNodes = async (req: AuthRequest, res: Response): Promise<Respons
             createdAt: node.createdAt
         }));
 
+        // Calculate pagination metadata
+        const totalPages = Math.ceil(total / limit);
+        const hasNextPage = page < totalPages;
+        const hasPrevPage = page > 1;
+
         return res.json({
             success: true,
             message: 'Nodes retrieved successfully',
-            data: formattedNodes
+            data: formattedNodes,
+            pagination: {
+                currentPage: page,
+                totalPages,
+                totalItems: total,
+                itemsPerPage: limit,
+                hasNextPage,
+                hasPrevPage
+            }
         });
 
     } catch (error) {
@@ -212,6 +244,121 @@ export const createNode = async (req: AuthRequest, res: Response): Promise<Respo
         return res.status(500).json({
             success: false,
             message: 'Failed to create node'
+        });
+    }
+};
+
+/**
+ * Update node information (name, description, location, etc.)
+ */
+export const updateNode = async (req: AuthRequest, res: Response): Promise<Response> => {
+    const { nodeId } = req.params;
+    const { name, chirpstackDeviceId, description, parkingSlotId, latitude, longitude } = req.body;
+
+    try {
+        const nodeRepository = AppDataSource.getRepository(Node);
+        const parkingSlotRepository = AppDataSource.getRepository(ParkingSlot);
+
+        // Find the node
+        const node = await nodeRepository.findOne({
+            where: {
+                id: nodeId,
+                admin: { id: req.user!.id }
+            },
+            relations: ['parkingSlot']
+        });
+
+        if (!node) {
+            return res.status(404).json({
+                success: false,
+                message: 'Node not found'
+            });
+        }
+
+        // Check if ChirpStack Device ID is unique (if being updated)
+        if (chirpstackDeviceId && chirpstackDeviceId !== node.chirpstackDeviceId) {
+            const existingNode = await nodeRepository.findOne({
+                where: { chirpstackDeviceId }
+            });
+
+            if (existingNode && existingNode.id !== nodeId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'ChirpStack Device ID already exists'
+                });
+            }
+        }
+
+        // Validate new parking slot if provided
+        let newParkingSlot = null;
+        if (parkingSlotId && parkingSlotId !== node.parkingSlot.id) {
+            newParkingSlot = await parkingSlotRepository.findOne({
+                where: {
+                    id: parkingSlotId,
+                    floor: {
+                        parkingLot: {
+                            admin: { id: req.user!.id }
+                        }
+                    }
+                },
+                relations: ['node']
+            });
+
+            if (!newParkingSlot) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Parking slot not found'
+                });
+            }
+
+            if (newParkingSlot.node && newParkingSlot.node.id !== nodeId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Parking slot already has another node assigned'
+                });
+            }
+        }
+
+        // Update node fields
+        if (name !== undefined) node.name = name;
+        if (chirpstackDeviceId !== undefined) node.chirpstackDeviceId = chirpstackDeviceId;
+        if (description !== undefined) node.description = description;
+        if (latitude !== undefined) node.latitude = latitude;
+        if (longitude !== undefined) node.longitude = longitude;
+        if (newParkingSlot) node.parkingSlot = newParkingSlot;
+
+        const updatedNode = await nodeRepository.save(node);
+
+        logger.info('Node updated successfully', {
+            nodeId: updatedNode.id,
+            adminId: req.user!.id,
+            updates: { name, chirpstackDeviceId, description, parkingSlotId, latitude, longitude }
+        });
+
+        return res.json({
+            success: true,
+            message: 'Node updated successfully',
+            data: {
+                id: updatedNode.id,
+                name: updatedNode.name,
+                chirpstackDeviceId: updatedNode.chirpstackDeviceId,
+                description: updatedNode.description,
+                latitude: updatedNode.latitude,
+                longitude: updatedNode.longitude,
+                status: updatedNode.status,
+                parkingSlot: {
+                    id: updatedNode.parkingSlot.id,
+                    name: updatedNode.parkingSlot.name
+                },
+                updatedAt: updatedNode.updatedAt
+            }
+        });
+
+    } catch (error) {
+        logger.error('Update node error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to update node'
         });
     }
 };

@@ -3,6 +3,7 @@ import {
     getNodes,
     getNode,
     createNode,
+    updateNode,
     updateNodeStatus,
     deleteNode,
     getNodesBySlots
@@ -16,14 +17,42 @@ const router = Router();
  * @swagger
  * /api/nodes:
  *   get:
- *     summary: Get all nodes for the authenticated admin
- *     description: Returns all nodes owned by the current admin with their parking slot relationships and real-time status
+ *     summary: Get all nodes for the authenticated admin with pagination and filtering
+ *     description: Returns nodes owned by the current admin with their parking slot relationships, real-time status, pagination support, and optional filtering by slot ID
  *     tags: [Nodes]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *         example: 1
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Number of items per page
+ *         example: 20
+ *       - in: query
+ *         name: slotId
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter nodes by specific parking slot ID
+ *         example: "2e9f8379-cecc-468d-b290-51208d7faf04"
  *     responses:
  *       200:
- *         description: List of nodes with status information
+ *         description: List of nodes with status information and pagination metadata
  *         content:
  *           application/json:
  *             schema:
@@ -39,9 +68,27 @@ const router = Router();
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Node'
- *                 count:
- *                   type: integer
- *                   example: 5
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     currentPage:
+ *                       type: integer
+ *                       example: 1
+ *                     totalPages:
+ *                       type: integer
+ *                       example: 3
+ *                     totalItems:
+ *                       type: integer
+ *                       example: 50
+ *                     itemsPerPage:
+ *                       type: integer
+ *                       example: 20
+ *                     hasNextPage:
+ *                       type: boolean
+ *                       example: true
+ *                     hasPrevPage:
+ *                       type: boolean
+ *                       example: false
  *       401:
  *         $ref: '#/components/responses/UnauthorizedError'
  *   post:
@@ -98,9 +145,126 @@ router.route('/')
  *         required: true
  *         schema:
  *           type: string
+ *           format: uuid
+ *         description: UUID of the node to retrieve
  *     responses:
  *       200:
  *         description: Node details with current status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: 'Node retrieved successfully'
+ *                 data:
+ *                   $ref: '#/components/schemas/Node'
+ *       404:
+ *         description: Node not found
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *   put:
+ *     summary: Update a node
+ *     description: Update node information including name, description, ChirpStack Device ID, location, and parking slot assignment
+ *     tags: [Nodes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: nodeId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the node to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: 'Updated Parking Sensor A-001'
+ *                 description: 'Name of the node'
+ *               chirpstackDeviceId:
+ *                 type: string
+ *                 example: '0123456789ABCDEF'
+ *                 pattern: '^[0-9a-fA-F]{16}$'
+ *                 description: '16-character hexadecimal ChirpStack device ID'
+ *               description:
+ *                 type: string
+ *                 example: 'Updated ultrasonic sensor for parking slot A-001'
+ *                 description: 'Description of the node'
+ *               parkingSlotId:
+ *                 type: string
+ *                 format: uuid
+ *                 example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890'
+ *                 description: 'UUID of the parking slot to assign this node to'
+ *               latitude:
+ *                 type: number
+ *                 format: decimal
+ *                 example: 40.7128
+ *                 description: 'GPS latitude coordinate'
+ *               longitude:
+ *                 type: number
+ *                 format: decimal
+ *                 example: -74.0060
+ *                 description: 'GPS longitude coordinate'
+ *             description: 'All fields are optional. Only provided fields will be updated.'
+ *     responses:
+ *       200:
+ *         description: Node updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: 'Node updated successfully'
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     name:
+ *                       type: string
+ *                     chirpstackDeviceId:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     latitude:
+ *                       type: number
+ *                     longitude:
+ *                       type: number
+ *                     status:
+ *                       type: string
+ *                     parkingSlot:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *       400:
+ *         description: Validation error or ChirpStack Device ID already exists
+ *       404:
+ *         description: Node or parking slot not found
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  *   delete:
  *     summary: Delete a node
  *     tags: [Nodes]
@@ -112,12 +276,30 @@ router.route('/')
  *         required: true
  *         schema:
  *           type: string
+ *           format: uuid
+ *         description: UUID of the node to delete
  *     responses:
  *       200:
  *         description: Node deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: 'Node deleted successfully'
+ *       404:
+ *         description: Node not found
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
  */
 router.route('/:nodeId')
     .get(auth, getNode)
+    .put(auth, validateBody(nodeSchemas.update), updateNode)
     .delete(auth, deleteNode);
 
 /**

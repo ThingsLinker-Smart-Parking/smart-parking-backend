@@ -53,7 +53,8 @@
       "Bash(npm run create:superadmin:*)",
       "Bash(npm run migration:generate:*)",
       "Bash(npx typeorm-ts-node-commonjs migration:generate:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(npm run seed:plans:*)"
     ],
     "deny": [],
     "ask": []
