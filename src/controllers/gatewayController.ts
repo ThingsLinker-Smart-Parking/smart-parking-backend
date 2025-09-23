@@ -337,41 +337,6 @@ export const getLinkedGateways = async (req: AuthRequest, res: Response): Promis
     }
 };
 
-/**
- * Assign gateway to parking lot (Admin only)
- */
-export const assignGatewayToParkingLot = async (req: AuthRequest, res: Response): Promise<Response> => {
-    try {
-        const { id } = req.params;
-        const { parkingLotId } = req.body;
-        const adminId = req.user!.id;
-
-        if (!validatePositiveInteger(id) || !validatePositiveInteger(parkingLotId)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Valid gateway ID and parking lot ID are required'
-            });
-        }
-
-        const gateway = await gatewayService.assignGatewayToParkingLot(
-            id,
-            parkingLotId,
-            adminId
-        );
-
-        return res.json({
-            success: true,
-            message: 'Gateway assigned to parking lot successfully',
-            data: gateway
-        });
-    } catch (error) {
-        logger.error('Assign gateway to parking lot error:', error);
-        return res.status(500).json({
-            success: false,
-            message: error instanceof Error ? error.message : 'Internal server error'
-        });
-    }
-};
 
 /**
  * Create node under gateway (Admin only)

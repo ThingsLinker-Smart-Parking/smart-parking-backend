@@ -373,55 +373,140 @@ export const assignGatewayToParkingLot = async (req: AuthRequest, res: Response)
 // Unassign gateway from parking lot
 export const unassignGatewayFromParkingLot = async (req: AuthRequest, res: Response): Promise<Response> => {
     const { id, gatewayId } = req.params;
-    
+
     try {
         const parkingLotRepository = AppDataSource.getRepository(ParkingLot);
         const gatewayRepository = AppDataSource.getRepository(Gateway);
-        
+
         // Check parking lot ownership
         const parkingLot = await parkingLotRepository.findOne({
-            where: { 
-                id: id, 
-                admin: { id: req.user!.id } 
+            where: {
+                id: id,
+                admin: { id: req.user!.id }
             }
         });
-        
+
         if (!parkingLot) {
             return res.status(404).json({
                 success: false,
                 message: 'Parking lot not found or access denied'
             });
         }
-        
+
         // Check gateway ownership and assignment
         const gateway = await gatewayRepository.findOne({
-            where: { 
+            where: {
                 id: gatewayId,
                 linkedAdmin: { id: req.user!.id },
                 parkingLot: { id: parkingLot.id }
             }
         });
-        
+
         if (!gateway) {
             return res.status(404).json({
                 success: false,
                 message: 'Gateway not found or not assigned to this parking lot'
             });
         }
-        
+
         // Unassign gateway
         gateway.parkingLot = null as any;
         await gatewayRepository.save(gateway);
-        
+
         return res.json({
             success: true,
             message: 'Gateway unassigned from parking lot successfully'
         });
     } catch (error) {
         logger.error('Unassign gateway error:', error);
-        return res.status(500).json({ 
-            success: false, 
-            message: 'Failed to unassign gateway from parking lot' 
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to unassign gateway from parking lot'
+        });
+    }
+};
+
+// Get gateways by parking lot ID
+export const getGatewaysByParkingLotId = async (req: AuthRequest, res: Response): Promise<Response> => {
+    const { id } = req.params;
+
+    try {
+        // Validate UUID
+        const idValidation = validateUuidParam(id, 'id');
+        if (!idValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: idValidation.error
+            });
+        }
+
+        const parkingLotRepository = AppDataSource.getRepository(ParkingLot);
+        const gatewayRepository = AppDataSource.getRepository(Gateway);
+
+        // Check parking lot ownership
+        const parkingLot = await parkingLotRepository.findOne({
+            where: {
+                id: id,
+                admin: { id: req.user!.id }
+            }
+        });
+
+        if (!parkingLot) {
+            return res.status(404).json({
+                success: false,
+                message: 'Parking lot not found or access denied'
+            });
+        }
+
+        // Get all gateways assigned to this parking lot
+        const gateways = await gatewayRepository.find({
+            where: {
+                parkingLot: { id: parkingLot.id },
+                linkedAdmin: { id: req.user!.id }
+            },
+            relations: ['linkedAdmin'],
+            order: { createdAt: 'DESC' }
+        });
+
+        const formattedGateways = gateways.map(gateway => ({
+            id: gateway.id,
+            name: gateway.name,
+            chirpstackGatewayId: gateway.chirpstackGatewayId,
+            description: gateway.description,
+            location: gateway.location,
+            latitude: gateway.latitude,
+            longitude: gateway.longitude,
+            isOnline: gateway.isOnline,
+            isActive: gateway.isActive,
+            lastSeen: gateway.lastSeen,
+            metadata: gateway.metadata,
+            createdAt: gateway.createdAt,
+            updatedAt: gateway.updatedAt
+        }));
+
+        logger.info('Gateways retrieved by parking lot', {
+            parkingLotId: id,
+            gatewayCount: gateways.length,
+            adminId: req.user!.id
+        });
+
+        return res.json({
+            success: true,
+            message: `Found ${gateways.length} gateways for parking lot`,
+            data: formattedGateways,
+            count: gateways.length,
+            parkingLot: {
+                id: parkingLot.id,
+                name: parkingLot.name,
+                address: parkingLot.address
+            }
+        });
+
+    } catch (error) {
+        logger.error('Get gateways by parking lot error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to retrieve gateways for parking lot'
         });
     }
 };
