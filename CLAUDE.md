@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Database & Seeding
 - `npm run seed:plans` - Seed subscription plans into database
 - `npm run create:superadmin` - Create super admin user
-- `npm run migration:generate` - Generate new migration from entity changes
+- `npm run migration:generate` - Generate new migration from entity changes (requires migration name)
 - `npm run migration:run` - Run pending migrations
 - `npm run migration:show` - Show pending migrations
 - `npm run migration:revert` - Revert last migration
@@ -64,9 +64,13 @@ src/
 ├── controllers/        # Route handlers
 ├── routes/             # Route definitions
 ├── services/           # Business logic (email, MQTT, OTP, subscriptions)
-├── middleware/         # Auth middleware
-├── config/             # Swagger configuration
-└── scripts/            # Database seeding scripts
+├── middleware/         # Auth middleware, logging, error handling
+├── config/             # Swagger and environment configuration
+├── scripts/            # Database seeding scripts
+├── validation/         # Input validation schemas and middleware
+├── utils/              # Utility functions and helpers
+└── database/
+    └── migrations/     # TypeORM migration files
 ```
 
 ### Key Services
@@ -78,6 +82,7 @@ src/
 - **Gateway Service** (`src/services/gatewayService.ts`): Manages LoRa gateway operations
 - **Logger Service** (`src/services/loggerService.ts`): Structured logging with Winston
 - **Health Check Service** (`src/services/healthCheckService.ts`): System health monitoring
+- **Database Optimization Service** (`src/services/databaseOptimizationService.ts`): Database performance monitoring and optimization
 
 ### Database Schema
 The system uses TypeORM with automatic schema synchronization in development. Key entities:
@@ -109,7 +114,7 @@ The system uses TypeORM with automatic schema synchronization in development. Ke
 - `/api/parking-lots/*` - Parking lot management
 - `/api/floors/*` - Floor management within parking lots
 - `/api/parking-slots/*` - Individual parking slot management
-- `/api/nodes/*` - IoT sensor node management
+- `/api/nodes/*` - IoT sensor node management (hierarchy enforced)
 - `/api/gateways/*` - LoRa gateway management
 - `/api/parking/*` - Real-time parking status and operations
 - `/api/subscriptions/*` - User subscription management
@@ -117,6 +122,12 @@ The system uses TypeORM with automatic schema synchronization in development. Ke
 - `/api/health` - System health monitoring
 - `/api-docs` - Interactive Swagger documentation
 - `/payments/cashfree/return` - Payment gateway callback handler
+
+### Important API Changes
+- **Node Creation**: Nodes must now be created for specific parking slots via `/api/nodes/parking-slot/{parkingSlotId}`
+- **Hierarchy Enforcement**: All nodes must belong to a parking slot (no standalone nodes)
+- **Gateway Assignment**: Nodes are assigned to gateways during creation and cannot be unassigned
+- **UUID Primary Keys**: All entities use UUID instead of integer IDs
 
 ### Environment Configuration
 Key environment variables in `.env`:
@@ -132,16 +143,18 @@ Key environment variables in `.env`:
 
 ### Development Notes
 - TypeORM synchronization is enabled in development (`synchronize: process.env.NODE_ENV === 'development'` in data-source.ts)
-- Database migrations managed via TypeORM CLI commands
+- Database migrations managed via TypeORM CLI commands (TypeORM 0.3.x format)
 - Email service logs to console in development mode
 - CORS configured for local development origins
 - All entities exported from `src/models/index.ts`
 - Swagger UI available at root (`/`) and `/api-docs`
-- ESLint and TypeScript parser configured (strict mode disabled for flexibility)
+- ESLint v9+ with TypeScript parser configured (strict mode disabled for flexibility)
 - Jest configured for unit and integration testing with 30s timeout and serial execution
 - Rate limiting and security middleware enabled by default
 - API versioning supported (default v1, legacy routes for backward compatibility)
 - Comprehensive payment flow handling with Flutter app deep linking
+- Database uses UUID primary keys for all entities
+- Performance indexes added for optimized queries
 
 ### Code Quality & Standards
 - **TypeScript**: Strict type checking disabled for flexibility (strict: false in tsconfig.json)

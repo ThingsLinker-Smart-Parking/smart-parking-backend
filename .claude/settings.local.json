@@ -54,7 +54,8 @@
       "Bash(npm run migration:generate:*)",
       "Bash(npx typeorm-ts-node-commonjs migration:generate:*)",
       "Bash(git checkout:*)",
-      "Bash(npm run seed:plans:*)"
+      "Bash(npm run seed:plans:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

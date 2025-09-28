@@ -26,7 +26,7 @@ const validateNodeInput = (data: any) => {
     
     if (!data.chirpstackDeviceId) errors.push('ChirpStack Device ID is required');
     if (!data.name) errors.push('Node name is required');
-    if (!data.gatewayId || !validatePositiveInteger(data.gatewayId)) {
+    if (!data.gatewayId || !validateUuid(data.gatewayId)) {
         errors.push('Valid Gateway ID is required');
     }
     
@@ -115,7 +115,7 @@ export const getGatewayById = async (req: AuthRequest, res: Response): Promise<R
     try {
         const { id } = req.params;
 
-        if (!validatePositiveInteger(id)) {
+        if (!validateUuid(id)) {
             return res.status(400).json({
                 success: false,
                 message: 'Valid gateway ID is required'
@@ -151,7 +151,7 @@ export const updateGateway = async (req: AuthRequest, res: Response): Promise<Re
         const { id } = req.params;
         const { name, description, location, latitude, longitude, isActive, metadata } = req.body;
 
-        if (!validatePositiveInteger(id)) {
+        if (!validateUuid(id)) {
             return res.status(400).json({
                 success: false,
                 message: 'Valid gateway ID is required'
@@ -205,7 +205,7 @@ export const deleteGateway = async (req: AuthRequest, res: Response): Promise<Re
     try {
         const { id } = req.params;
 
-        if (!validatePositiveInteger(id)) {
+        if (!validateUuid(id)) {
             return res.status(400).json({
                 success: false,
                 message: 'Valid gateway ID is required'
@@ -258,7 +258,7 @@ export const linkGateway = async (req: AuthRequest, res: Response): Promise<Resp
         const { gatewayId } = req.body;
         const adminId = req.user!.id;
 
-        if (!gatewayId || !validatePositiveInteger(gatewayId)) {
+        if (!gatewayId || !validateUuid(gatewayId)) {
             return res.status(400).json({
                 success: false,
                 message: 'Valid gateway ID is required'
@@ -292,7 +292,7 @@ export const unlinkGateway = async (req: AuthRequest, res: Response): Promise<Re
         const { id } = req.params;
         const adminId = req.user!.id;
 
-        if (!validatePositiveInteger(id)) {
+        if (!validateUuid(id)) {
             return res.status(400).json({
                 success: false,
                 message: 'Valid gateway ID is required'
@@ -391,7 +391,7 @@ export const getGatewayNodes = async (req: AuthRequest, res: Response): Promise<
         const { id } = req.params;
         const adminId = req.user!.role === 'super_admin' ? undefined : req.user!.id;
 
-        if (!validatePositiveInteger(id)) {
+        if (!validateUuid(id)) {
             return res.status(400).json({
                 success: false,
                 message: 'Valid gateway ID is required'

@@ -85,7 +85,7 @@ export class GatewayService {
 
         return await this.gatewayRepository.find({
             where: whereClause,
-            relations: ['linkedAdmin', 'createdBy', 'nodes', 'parkingLot'],
+            relations: ['linkedAdmin', 'createdBy', 'parkingLot'],
             order: { createdAt: 'DESC' }
         });
     }
@@ -96,7 +96,7 @@ export class GatewayService {
     async getGatewayById(id: string): Promise<Gateway | null> {
         return await this.gatewayRepository.findOne({
             where: { id },
-            relations: ['linkedAdmin', 'createdBy', 'nodes', 'nodes.admin', 'nodes.parkingSlot', 'parkingLot']
+            relations: ['linkedAdmin', 'createdBy', 'parkingLot']
         });
     }
 
@@ -118,8 +118,7 @@ export class GatewayService {
      */
     async deleteGateway(id: string): Promise<void> {
         const gateway = await this.gatewayRepository.findOne({
-            where: { id },
-            relations: ['nodes']
+            where: { id }
         });
 
         if (!gateway) {
@@ -211,7 +210,7 @@ export class GatewayService {
     async getAdminLinkedGateways(adminId: string): Promise<Gateway[]> {
         return await this.gatewayRepository.find({
             where: { linkedAdmin: { id: adminId } },
-            relations: ['nodes', 'nodes.parkingSlot', 'parkingLot', 'parkingLot.floors'],
+            relations: ['parkingLot', 'parkingLot.floors'],
             order: { linkedAt: 'DESC' }
         });
     }
@@ -281,20 +280,30 @@ export class GatewayService {
 
     /**
      * Get all nodes for a gateway
+     * Note: After architecture change, nodes are now linked to parking slots,
+     * and gateway relationship is stored in metadata
      */
     async getGatewayNodes(gatewayId: string, adminId?: string): Promise<Node[]> {
-        const whereClause: any = { gateway: { id: gatewayId } };
-        
-        // If adminId is provided, ensure gateway belongs to admin
-        if (adminId) {
-            whereClause.gateway = { id: gatewayId, linkedAdmin: { id: adminId } };
+        // First, verify the gateway exists and belongs to admin if specified
+        const gateway = await this.gatewayRepository.findOne({
+            where: adminId ? { id: gatewayId, linkedAdmin: { id: adminId } } : { id: gatewayId },
+            relations: ['linkedAdmin']
+        });
+
+        if (!gateway) {
+            throw new Error('Gateway not found or access denied');
         }
 
-        return await this.nodeRepository.find({
-            where: whereClause,
-            relations: ['gateway', 'admin', 'parkingSlot', 'parkingSlot.floor'],
+        // Find nodes that have this gateway in their metadata
+        // Note: This is a workaround since nodes no longer have direct gateway relationship
+        const allNodes = await this.nodeRepository.find({
+            where: adminId ? { admin: { id: adminId } } : {},
+            relations: ['admin', 'parkingSlot', 'parkingSlot.floor', 'parkingSlot.floor.parkingLot'],
             order: { createdAt: 'DESC' }
         });
+
+        // Filter nodes by gatewayId in metadata
+        return allNodes.filter(node => node.metadata?.gatewayId === gatewayId);
     }
 
     /**
@@ -350,32 +359,49 @@ export class GatewayService {
         }
 
         const nodeWhere: any = {};
-        if (gatewayId) {
-            nodeWhere.gateway = { id: gatewayId };
-        }
         if (adminId) {
-            nodeWhere.gateway = { ...nodeWhere.gateway, linkedAdmin: { id: adminId } };
+            nodeWhere.admin = { id: adminId };
+        }
+
+        // Get nodes filtered by gatewayId if specified
+        let filteredNodes: Node[] = [];
+        if (gatewayId && adminId) {
+            // Find nodes that belong to this admin and have the specified gatewayId in metadata
+            const adminNodes = await this.nodeRepository.find({
+                where: { admin: { id: adminId } },
+                select: ['id', 'lastSeen', 'isActive', 'metadata']
+            });
+            filteredNodes = adminNodes.filter(node => node.metadata?.gatewayId === gatewayId);
+        } else if (adminId) {
+            // Get all nodes for this admin
+            filteredNodes = await this.nodeRepository.find({
+                where: { admin: { id: adminId } },
+                select: ['id', 'lastSeen', 'isActive', 'metadata']
+            });
+        } else {
+            // Get all nodes (super admin view)
+            filteredNodes = await this.nodeRepository.find({
+                select: ['id', 'lastSeen', 'isActive', 'metadata']
+            });
         }
 
         const [
             totalGateways,
             activeGateways,
-            linkedGateways,
-            totalNodes,
-            activeNodes,
-            allNodes
+            linkedGateways
         ] = await Promise.all([
             this.gatewayRepository.count({ where: gatewayWhere }),
             this.gatewayRepository.count({ where: { ...gatewayWhere, isActive: true } }),
-            this.gatewayRepository.count({ where: { ...gatewayWhere, isLinked: true } }),
-            this.nodeRepository.count({ where: nodeWhere }),
-            this.nodeRepository.count({ where: { ...nodeWhere, isActive: true } }),
-            this.nodeRepository.find({ where: nodeWhere, select: ['lastSeen'] })
+            this.gatewayRepository.count({ where: { ...gatewayWhere, isLinked: true } })
         ]);
+
+        // Calculate node statistics from filtered nodes
+        const totalNodes = filteredNodes.length;
+        const activeNodes = filteredNodes.filter(node => node.isActive).length;
 
         // Count online nodes (seen in last 5 minutes)
         const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-        const onlineNodes = allNodes.filter(node => 
+        const onlineNodes = filteredNodes.filter(node =>
             node.lastSeen && node.lastSeen > fiveMinutesAgo
         ).length;
 
