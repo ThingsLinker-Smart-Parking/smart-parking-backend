@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AppDataSource } from '../data-source';
 import { Node } from '../models/Node';
 import { ParkingSlot } from '../models/ParkingSlot';
+import { ParkingStatusLog } from '../models/ParkingStatusLog';
 import { AuthRequest } from '../middleware/auth';
 import { logger } from '../services/loggerService';
 import { In } from 'typeorm';
@@ -397,13 +398,28 @@ export const updateNodeStatus = async (req: AuthRequest, res: Response): Promise
             });
         }
 
-        // Update node metadata
+        // Determine slot status based on percentage
+        let slotStatus: 'available' | 'occupied' | 'reserved' | 'unknown' = 'unknown';
+        if (percentage !== undefined) {
+            if (percentage >= 80) {
+                slotStatus = 'available';
+            } else if (percentage < 60) {
+                slotStatus = 'reserved';
+            } else {
+                // Indeterminate range (60-79%)
+                slotStatus = 'occupied';
+            }
+        }
+
+        // Update node metadata with all sensor data
         const updatedMetadata = {
             ...node.metadata,
-            distance: distance || node.metadata?.distance,
+            distance: distance !== undefined ? distance : node.metadata?.distance,
             percentage: percentage !== undefined ? percentage : node.metadata?.percentage,
             batteryLevel: batteryLevel !== undefined ? batteryLevel : node.metadata?.batteryLevel,
-            lastUpdated: new Date().toISOString()
+            state: slotStatus === 'available' ? 'FREE' : slotStatus === 'reserved' || slotStatus === 'occupied' ? 'OCCUPIED' : undefined,
+            lastUpdated: new Date().toISOString(),
+            isOnline: true
         };
 
         node.metadata = updatedMetadata;
@@ -411,23 +427,32 @@ export const updateNodeStatus = async (req: AuthRequest, res: Response): Promise
 
         await nodeRepository.save(node);
 
-        // Determine slot status based on percentage
-        let slotStatus: 'available' | 'reserved' | null = null;
-        if (percentage !== undefined) {
-            if (percentage >= 80) {
-                slotStatus = 'available';
-            } else if (percentage < 60) {
-                slotStatus = 'reserved';
+        // Create a status log entry for history
+        const statusLogRepository = AppDataSource.getRepository(ParkingStatusLog);
+        const statusLog = statusLogRepository.create({
+            parkingSlot: node.parkingSlot,
+            status: slotStatus,
+            detectedAt: new Date(),
+            distance: distance !== undefined ? distance : null,
+            percentage: percentage !== undefined ? percentage : null,
+            batteryLevel: batteryLevel !== undefined ? batteryLevel : null,
+            metadata: {
+                isOnline: true,
+                nodeId: node.id,
+                updatedViaApi: true
             }
-        }
+        });
 
-        logger.info('Node status updated', {
+        await statusLogRepository.save(statusLog);
+
+        logger.info('Node status updated with history log', {
             nodeId: node.id,
             parkingSlotId: node.parkingSlot.id,
             distance,
             percentage,
             batteryLevel,
             slotStatus,
+            statusLogId: statusLog.id,
             adminId: req.user!.id
         });
 
