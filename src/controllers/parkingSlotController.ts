@@ -3,6 +3,7 @@ import { AppDataSource } from '../data-source';
 import { ParkingSlot } from '../models/ParkingSlot';
 import { Floor } from '../models/Floor';
 import { Node } from '../models/Node';
+import { ParkingStatusLog } from '../models/ParkingStatusLog';
 import { AuthRequest } from '../middleware/auth';
 import { validateRequired, validateUuidParam } from '../utils/validation';
 import { logger } from '../services/loggerService';
@@ -519,68 +520,27 @@ export const getParkingSlotStatus = async (req: AuthRequest, res: Response): Pro
             });
         }
 
-        // Generate realistic historical data (simplified - in production this would come from a database)
-        const historicalData = [];
-        const now = new Date();
+        // Get actual historical data from database
+        const statusLogRepository = AppDataSource.getRepository(ParkingStatusLog);
         const limitNum = parseInt(limit as string);
-        
-        // Generate dynamic historical data with realistic changes
-        for (let i = limitNum - 1; i >= 0; i--) {
-            const timestamp = new Date(now.getTime() - (i * 5 * 60 * 1000)); // 5 minutes apart
-            
-            // Simulate realistic parking patterns
-            const timeOfDay = timestamp.getHours();
-            let percentage: number;
-            let distance: number;
-            let status: 'available' | 'reserved' | null;
-            let batteryLevel: number;
-            
-            // Generate varying data based on time and randomness
-            if (i === 0) {
-                // Current values
-                percentage = node.percentage || 50;
-                distance = node.distance || 50;
-                batteryLevel = node.batteryLevel || 100;
-            } else {
-                // Historical simulation with realistic patterns
-                const randomFactor = Math.random();
-                
-                // Peak hours (8-10 AM, 5-7 PM) tend to be more occupied
-                const isPeakHour = (timeOfDay >= 8 && timeOfDay <= 10) || (timeOfDay >= 17 && timeOfDay <= 19);
-                
-                if (isPeakHour) {
-                    // More likely to be occupied during peak hours
-                    percentage = randomFactor < 0.7 ? 30 + Math.floor(Math.random() * 30) : 80 + Math.floor(Math.random() * 20);
-                } else {
-                    // More likely to be available during off-peak hours
-                    percentage = randomFactor < 0.4 ? 30 + Math.floor(Math.random() * 30) : 80 + Math.floor(Math.random() * 20);
-                }
-                
-                distance = percentage + Math.floor(Math.random() * 20) - 10; // Add some variance
-                distance = Math.max(10, Math.min(200, distance)); // Keep within realistic bounds
-                
-                // Battery slowly decreases over time
-                batteryLevel = Math.max(70, 100 - Math.floor(i * 2) + Math.floor(Math.random() * 5));
-            }
-            
-            // Determine status based on percentage
-            if (percentage >= 80) {
-                status = 'available';
-            } else if (percentage < 60) {
-                status = 'reserved';
-            } else {
-                status = null; // indeterminate
-            }
-            
-            historicalData.push({
-                timestamp: timestamp.toISOString(),
-                status: status,
-                percentage: percentage,
-                distance: distance,
-                batteryLevel: batteryLevel,
-                isOnline: batteryLevel > 20 && Math.random() > 0.1 // Occasionally offline
-            });
-        }
+
+        const statusLogs = await statusLogRepository.find({
+            where: {
+                parkingSlot: { id: parkingSlot.id }
+            },
+            order: { detectedAt: 'DESC' },
+            take: limitNum
+        });
+
+        // Format historical data from database records (reverse to show oldest first)
+        const historicalData = statusLogs.reverse().map(log => ({
+            timestamp: log.detectedAt.toISOString(),
+            status: log.status,
+            percentage: log.percentage ? parseFloat(log.percentage.toString()) : null,
+            distance: log.distance ? parseFloat(log.distance.toString()) : null,
+            batteryLevel: log.batteryLevel,
+            isOnline: log.metadata?.isOnline ?? true
+        }));
 
         // Current status
         const currentStatus = {
