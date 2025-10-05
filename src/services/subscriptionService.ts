@@ -1344,6 +1344,12 @@ export class SubscriptionService {
         status: 'active',
         billingCycle: data.newBillingCycle,
         amount: originalPrice,
+        paymentStatus: 'paid',
+        gatewayLimit: newPlan.maxGateways,
+        parkingLotLimit: newPlan.maxParkingLots,
+        floorLimit: newPlan.maxFloors,
+        parkingSlotLimit: newPlan.maxParkingSlots,
+        userLimit: newPlan.maxUsers,
         autoRenew: true,
       });
 
@@ -1373,6 +1379,12 @@ export class SubscriptionService {
       status: 'pending',
       billingCycle: data.newBillingCycle,
       amount: originalPrice,
+      paymentStatus: 'pending',
+      gatewayLimit: newPlan.maxGateways,
+      parkingLotLimit: newPlan.maxParkingLots,
+      floorLimit: newPlan.maxFloors,
+      parkingSlotLimit: newPlan.maxParkingSlots,
+      userLimit: newPlan.maxUsers,
       autoRenew: true,
     });
 
