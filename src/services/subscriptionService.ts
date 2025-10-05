@@ -1317,6 +1317,7 @@ export class SubscriptionService {
         endDate,
         status: 'active',
         billingCycle: data.newBillingCycle,
+        amount: originalPrice,
         autoRenew: true,
       });
 
@@ -1345,6 +1346,7 @@ export class SubscriptionService {
       endDate,
       status: 'pending',
       billingCycle: data.newBillingCycle,
+      amount: originalPrice,
       autoRenew: true,
     });
 
