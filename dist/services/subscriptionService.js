@@ -301,6 +301,22 @@ class SubscriptionService {
                     payment.subscription.status = "active";
                     payment.subscription.paymentStatus = "paid";
                     await subscriptionRepository.save(payment.subscription);
+                    // If this is an upgrade, cancel the old subscription
+                    if (payment.type === 'subscription_upgrade' && payment.metadata?.oldSubscriptionId) {
+                        const oldSubscription = await subscriptionRepository.findOne({
+                            where: { id: payment.metadata.oldSubscriptionId },
+                        });
+                        if (oldSubscription && oldSubscription.status === 'active') {
+                            oldSubscription.status = 'cancelled';
+                            oldSubscription.cancelledAt = new Date();
+                            await subscriptionRepository.save(oldSubscription);
+                            loggerService_1.logger.info('Old subscription cancelled after upgrade', {
+                                oldSubscriptionId: oldSubscription.id,
+                                newSubscriptionId: payment.subscription.id,
+                                paymentId: payment.id,
+                            });
+                        }
+                    }
                 }
             }
             else {
@@ -309,7 +325,13 @@ class SubscriptionService {
                 // Update subscription status
                 if (payment.subscription) {
                     payment.subscription.paymentStatus = "failed";
+                    payment.subscription.status = "cancelled";
                     await subscriptionRepository.save(payment.subscription);
+                    loggerService_1.logger.info('Pending subscription cancelled after payment failure', {
+                        subscriptionId: payment.subscription.id,
+                        paymentId: payment.id,
+                        isUpgrade: payment.type === 'subscription_upgrade',
+                    });
                 }
             }
             return await paymentRepository.save(payment);
@@ -910,12 +932,12 @@ class SubscriptionService {
         const originalPrice = newPlan.getPriceInInr(data.newBillingCycle, nodeCount);
         // Calculate final price after credit
         const finalPrice = Math.max(0, originalPrice - creditAmount);
-        // Cancel current subscription
-        currentSubscription.status = 'cancelled';
-        currentSubscription.cancelledAt = new Date();
-        await subscriptionRepository.save(currentSubscription);
         // If final price is 0 or very small, activate immediately without payment
         if (finalPrice < 1) {
+            // Cancel current subscription only when activating new one
+            currentSubscription.status = 'cancelled';
+            currentSubscription.cancelledAt = new Date();
+            await subscriptionRepository.save(currentSubscription);
             const startDate = new Date();
             const endDate = this.calculateEndDate(startDate, data.newBillingCycle);
             const newSubscription = subscriptionRepository.create({
