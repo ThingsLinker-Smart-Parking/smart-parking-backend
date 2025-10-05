@@ -101,7 +101,7 @@ __decorate([
     __metadata("design:type", Subscription_1.Subscription)
 ], Payment.prototype, "subscription", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: ['subscription', 'one_time', 'refund', 'credit'] }),
+    (0, typeorm_1.Column)({ type: 'enum', enum: ['subscription', 'subscription_upgrade', 'one_time', 'refund', 'credit'] }),
     __metadata("design:type", String)
 ], Payment.prototype, "type", void 0);
 __decorate([

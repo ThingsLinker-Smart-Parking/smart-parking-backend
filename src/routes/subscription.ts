@@ -22,6 +22,9 @@ import {
   getSubscriptionStatusController,
 } from "../controllers/subscriptionController";
 import { authenticateToken, requireRole } from "../middleware/auth";
+import { SubscriptionService } from "../services/subscriptionService";
+
+const subscriptionService = new SubscriptionService();
 
 const router = Router();
 
@@ -454,6 +457,80 @@ router.post(
   authenticateToken,
   finalizeCashfreePayment,
 );
+
+/**
+ * @swagger
+ * /api/subscriptions/upgrade:
+ *   post:
+ *     summary: Upgrade subscription with prorated credit
+ *     tags: [Subscriptions]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - newPlanId
+ *               - newBillingCycle
+ *             properties:
+ *               newPlanId:
+ *                 type: string
+ *                 example: "uuid-or-plan-name"
+ *               newBillingCycle:
+ *                 type: string
+ *                 enum: [monthly, quarterly, yearly]
+ *               nodeCount:
+ *                 type: integer
+ *                 example: 10
+ *     responses:
+ *       200:
+ *         description: Upgrade initiated successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.post("/upgrade", authenticateToken, async (req, res) => {
+  try {
+    const userId = (req as any).user.id;
+    const { newPlanId, newBillingCycle, nodeCount } = req.body;
+
+    if (!newPlanId || !newBillingCycle) {
+      return res.status(400).json({
+        success: false,
+        message: "newPlanId and newBillingCycle are required",
+      });
+    }
+
+    const result = await subscriptionService.upgradeSubscription({
+      userId,
+      newPlanId,
+      newBillingCycle,
+      nodeCount,
+    });
+
+    res.json({
+      success: true,
+      message: "Subscription upgrade initiated",
+      data: {
+        subscription: result.newSubscription,
+        proratedCredit: result.proratedCredit,
+        remainingDays: result.remainingDays,
+        originalPrice: result.originalPrice,
+        finalPrice: result.finalPrice,
+        paymentSessionId: result.paymentSessionId,
+        orderId: result.orderId,
+      },
+    });
+  } catch (error: any) {
+    console.error("Upgrade subscription error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to upgrade subscription",
+    });
+  }
+});
 
 /**
  * @swagger

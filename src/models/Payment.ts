@@ -10,7 +10,7 @@ export type PaymentMethod =
     | 'manual'
     | 'bank_transfer'
     | 'cashfree';
-export type PaymentType = 'subscription' | 'one_time' | 'refund' | 'credit';
+export type PaymentType = 'subscription' | 'subscription_upgrade' | 'one_time' | 'refund' | 'credit';
 
 @Entity()
 @Index(['user', 'status'])
@@ -30,7 +30,7 @@ export class Payment {
     @ManyToOne(() => Subscription, { nullable: true })
     subscription: Subscription;
 
-    @Column({ type: 'enum', enum: ['subscription', 'one_time', 'refund', 'credit'] })
+    @Column({ type: 'enum', enum: ['subscription', 'subscription_upgrade', 'one_time', 'refund', 'credit'] })
     type: PaymentType;
 
     @Column({ type: 'decimal', precision: 10, scale: 2 })

@@ -1191,6 +1191,215 @@ export class SubscriptionService {
   }
 
   /**
+   * Calculate prorated credit from current subscription
+   */
+  private calculateProratedCredit(
+    currentSubscription: Subscription,
+    currentPlan: SubscriptionPlan
+  ): { creditAmount: number; remainingDays: number } {
+    const now = new Date();
+    const endDate = new Date(currentSubscription.endDate);
+    const startDate = new Date(currentSubscription.startDate);
+
+    // Calculate remaining days
+    const remainingMs = endDate.getTime() - now.getTime();
+    const remainingDays = Math.max(0, Math.ceil(remainingMs / (1000 * 60 * 60 * 24)));
+
+    if (remainingDays <= 0) {
+      return { creditAmount: 0, remainingDays: 0 };
+    }
+
+    // Calculate total days in billing period
+    const totalMs = endDate.getTime() - startDate.getTime();
+    const totalDays = Math.ceil(totalMs / (1000 * 60 * 60 * 24));
+
+    // Get current plan price
+    const currentPlanPrice = currentPlan.getPriceInInr(
+      currentSubscription.billingCycle as BillingCycle,
+      0 // No node count for base calculation
+    );
+
+    // Calculate prorated credit
+    const creditAmount = (currentPlanPrice * remainingDays) / totalDays;
+
+    return {
+      creditAmount: Math.round(creditAmount * 100) / 100, // Round to 2 decimal places
+      remainingDays,
+    };
+  }
+
+  /**
+   * Upgrade subscription with prorated credit
+   */
+  async upgradeSubscription(data: {
+    userId: string;
+    newPlanId: string;
+    newBillingCycle: BillingCycle;
+    nodeCount?: number;
+  }): Promise<{
+    newSubscription: Subscription;
+    proratedCredit: number;
+    remainingDays: number;
+    originalPrice: number;
+    finalPrice: number;
+    paymentSessionId?: string;
+    orderId?: string;
+  }> {
+    const userRepository = AppDataSource.getRepository(User);
+    const planRepository = AppDataSource.getRepository(SubscriptionPlan);
+    const subscriptionRepository = this.subscriptionRepository;
+
+    // Get user
+    const user = await userRepository.findOne({
+      where: { id: data.userId },
+    });
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Get current active subscription
+    const currentSubscription = await subscriptionRepository.findOne({
+      where: {
+        admin: { id: data.userId },
+        status: In(["active", "trial"]),
+      },
+      relations: ["plan"],
+    });
+
+    if (!currentSubscription) {
+      throw new Error("No active subscription found to upgrade");
+    }
+
+    // Get new plan
+    const newPlan = await this.findPlanByIdentifier(
+      planRepository,
+      data.newPlanId
+    );
+
+    if (!newPlan) {
+      throw new Error("New subscription plan not found or inactive");
+    }
+
+    // Check if it's actually an upgrade (not same plan)
+    if (currentSubscription.plan.id === newPlan.id &&
+        currentSubscription.billingCycle === data.newBillingCycle) {
+      throw new Error("You are already subscribed to this plan and billing cycle");
+    }
+
+    // Calculate prorated credit
+    const { creditAmount, remainingDays } = this.calculateProratedCredit(
+      currentSubscription,
+      currentSubscription.plan
+    );
+
+    // Calculate new plan price
+    const nodeCount = data.nodeCount ?? 0;
+    const originalPrice = newPlan.getPriceInInr(data.newBillingCycle, nodeCount);
+
+    // Calculate final price after credit
+    const finalPrice = Math.max(0, originalPrice - creditAmount);
+
+    // Cancel current subscription
+    currentSubscription.status = 'cancelled';
+    currentSubscription.cancelledAt = new Date();
+    await subscriptionRepository.save(currentSubscription);
+
+    // If final price is 0 or very small, activate immediately without payment
+    if (finalPrice < 1) {
+      const startDate = new Date();
+      const endDate = this.calculateEndDate(startDate, data.newBillingCycle);
+
+      const newSubscription = subscriptionRepository.create({
+        admin: user,
+        plan: newPlan,
+        startDate,
+        endDate,
+        status: 'active',
+        billingCycle: data.newBillingCycle,
+        autoRenew: true,
+      });
+
+      await subscriptionRepository.save(newSubscription);
+
+      return {
+        newSubscription,
+        proratedCredit: creditAmount,
+        remainingDays,
+        originalPrice,
+        finalPrice: 0,
+      };
+    }
+
+    // Create payment session for the difference
+    const amountInr = finalPrice;
+
+    const startDate = new Date();
+    const endDate = this.calculateEndDate(startDate, data.newBillingCycle);
+
+    // Create pending subscription
+    const newSubscription = subscriptionRepository.create({
+      admin: user,
+      plan: newPlan,
+      startDate,
+      endDate,
+      status: 'pending',
+      billingCycle: data.newBillingCycle,
+      autoRenew: true,
+    });
+
+    await subscriptionRepository.save(newSubscription);
+
+    // Generate unique transaction ID
+    const transactionId = this.generateTransactionId();
+
+    // Create Cashfree payment order
+    const cashfreeResponse = await cashfreePaymentService.createOrder({
+      orderId: transactionId,
+      amount: amountInr,
+      currency: "INR",
+      customerId: user.id,
+      customerEmail: user.email,
+      customerPhone: "9999999999", // Default phone as User model doesn't have phone field
+      orderNote: `Subscription upgrade to ${newPlan.name}`,
+    });
+
+    // Create payment record
+    const paymentRepository = AppDataSource.getRepository(Payment);
+    const payment = paymentRepository.create({
+      subscription: newSubscription,
+      user: user,
+      transactionId: cashfreeResponse.order_id,
+      type: 'subscription_upgrade',
+      amount: amountInr,
+      currency: "INR",
+      paymentMethod: 'cashfree',
+      status: 'pending',
+      metadata: {
+        proratedCredit: creditAmount,
+        remainingDays,
+        originalPrice,
+        finalPrice,
+        oldSubscriptionId: currentSubscription.id,
+        cfOrderId: cashfreeResponse.cf_order_id,
+        paymentSessionId: cashfreeResponse.payment_session_id,
+      },
+    });
+
+    await paymentRepository.save(payment);
+
+    return {
+      newSubscription,
+      proratedCredit: creditAmount,
+      remainingDays,
+      originalPrice,
+      finalPrice,
+      paymentSessionId: cashfreeResponse.payment_session_id,
+      orderId: cashfreeResponse.order_id,
+    };
+  }
+
+  /**
    * Generate unique transaction ID
    */
   private generateTransactionId(): string {
