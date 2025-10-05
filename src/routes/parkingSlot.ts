@@ -9,7 +9,8 @@ import {
     unassignNodeFromParkingSlot,
     getParkingSlotStatus,
     bulkCreateParkingSlots,
-    getAllParkingSlots
+    getAllParkingSlots,
+    quickAssignNode
 } from '../controllers/parkingSlotController';
 import { authenticateToken, requireRole } from '../middleware/auth';
 
@@ -370,5 +371,92 @@ router.post('/:id/unassign-node', unassignNodeFromParkingSlot);
  *         description: Parking slot not found
  */
 router.get('/:id/status', getParkingSlotStatus);
+
+/**
+ * @swagger
+ * /api/parking-slots/quick-assign:
+ *   post:
+ *     summary: Quick assign node to parking slot using ChirpStack Device ID
+ *     description: Assign a node to a parking slot using the ChirpStack Device ID from QR code scanning. Critical for mobile app workflow.
+ *     tags: [Parking Slots]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - slotId
+ *               - chirpstackDeviceId
+ *             properties:
+ *               slotId:
+ *                 type: string
+ *                 format: uuid
+ *                 example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+ *                 description: UUID of parking slot (from QR code)
+ *               chirpstackDeviceId:
+ *                 type: string
+ *                 example: "0123456789ABCDEF"
+ *                 description: ChirpStack Device ID (16-character hex string)
+ *     responses:
+ *       200:
+ *         description: Node assigned successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Node assigned to slot A-001"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     slot:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           format: uuid
+ *                         name:
+ *                           type: string
+ *                         node:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: string
+ *                               format: uuid
+ *                             name:
+ *                               type: string
+ *                             chirpstackDeviceId:
+ *                               type: string
+ *       400:
+ *         description: Validation error or node/slot already assigned
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   examples:
+ *                     nodeAlreadyAssigned:
+ *                       value: "Node already assigned to slot X"
+ *                     slotAlreadyHasNode:
+ *                       value: "Slot already has node Y"
+ *       404:
+ *         description: Slot or node not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/quick-assign', quickAssignNode);
 
 export default router;

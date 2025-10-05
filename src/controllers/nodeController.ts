@@ -551,6 +551,72 @@ export const getNodesBySlots = async (req: AuthRequest, res: Response): Promise<
 };
 
 /**
+ * Get unassigned nodes (nodes without parking slot assignment)
+ */
+export const getUnassignedNodes = async (req: AuthRequest, res: Response): Promise<Response> => {
+    try {
+        const nodeRepository = AppDataSource.getRepository(Node);
+
+        // Extract query parameters
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 50;
+        const gatewayId = req.query.gatewayId as string;
+
+        // Calculate skip for pagination
+        const skip = (page - 1) * limit;
+
+        // Build where clause - find nodes without parking slot
+        const whereClause: any = {
+            admin: { id: req.user!.id },
+            parkingSlot: null
+        };
+
+        // Add gatewayId filter if provided
+        if (gatewayId) {
+            whereClause.gatewayId = gatewayId;
+        }
+
+        // Get unassigned nodes with pagination
+        const [nodes, total] = await nodeRepository.findAndCount({
+            where: whereClause,
+            order: { createdAt: 'DESC' },
+            skip: skip,
+            take: limit
+        });
+
+        const formattedNodes = nodes.map(node => ({
+            id: node.id,
+            name: node.name,
+            chirpstackDeviceId: node.chirpstackDeviceId,
+            status: 'unassigned',
+            batteryLevel: node.batteryLevel,
+            gatewayId: node.gatewayId,
+            createdAt: node.createdAt
+        }));
+
+        logger.info('Unassigned nodes retrieved', {
+            adminId: req.user!.id,
+            count: total,
+            page,
+            limit
+        });
+
+        return res.json({
+            success: true,
+            data: formattedNodes,
+            count: total
+        });
+
+    } catch (error) {
+        logger.error('Get unassigned nodes error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to retrieve unassigned nodes'
+        });
+    }
+};
+
+/**
  * Delete a node
  */
 export const deleteNode = async (req: AuthRequest, res: Response): Promise<Response> => {

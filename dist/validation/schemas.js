@@ -282,10 +282,30 @@ exports.nodeSchemas = {
         'object.min': 'At least one status field must be provided'
     }),
     update: joi_1.default.object({
-        name: joi_1.default.string().min(3).max(100).optional(),
+        name: joi_1.default.string().min(3).max(100).optional().messages({
+            'string.min': 'Node name must be at least 3 characters long',
+            'string.max': 'Node name cannot exceed 100 characters'
+        }),
+        chirpstackDeviceId: joi_1.default.string()
+            .min(16)
+            .max(16)
+            .pattern(/^[0-9a-fA-F]{16}$/)
+            .optional()
+            .messages({
+            'string.min': 'ChirpStack Device ID must be exactly 16 characters',
+            'string.max': 'ChirpStack Device ID must be exactly 16 characters',
+            'string.pattern.base': 'ChirpStack Device ID must be a valid 16-character hexadecimal string'
+        }),
         description: joi_1.default.string().max(500).optional(),
-        latitude: joi_1.default.number().min(-90).max(90).optional(),
-        longitude: joi_1.default.number().min(-180).max(180).optional(),
+        parkingSlotId: exports.commonSchemas.uuid.optional(),
+        latitude: joi_1.default.number().min(-90).max(90).optional().messages({
+            'number.min': 'Latitude must be between -90 and 90',
+            'number.max': 'Latitude must be between -90 and 90'
+        }),
+        longitude: joi_1.default.number().min(-180).max(180).optional().messages({
+            'number.min': 'Longitude must be between -180 and 180',
+            'number.max': 'Longitude must be between -180 and 180'
+        }),
         isActive: joi_1.default.boolean().optional()
     }).min(1).messages({
         'object.min': 'At least one field must be provided for update'

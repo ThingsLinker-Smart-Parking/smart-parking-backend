@@ -449,6 +449,7 @@ export const getGatewayStatistics = async (req: AuthRequest, res: Response): Pro
 
 /**
  * Update node status via ChirpStack webhook
+ * Auto-creates node if not exists with status='unassigned' and autoCreated=true
  */
 export const updateNodeStatus = async (req: Request, res: Response): Promise<Response> => {
     try {
@@ -461,12 +462,20 @@ export const updateNodeStatus = async (req: Request, res: Response): Promise<Res
             });
         }
 
-        const node = await gatewayService.updateNodeStatus(deviceId, metadata || {});
-        
+        let node = await gatewayService.updateNodeStatus(deviceId, metadata || {});
+
         if (!node) {
+            // Node not found - cannot auto-create because nodes require parking slot
+            // Log the attempt for admin to manually create the node
+            logger.warn('Node not found in webhook, cannot auto-create (requires parking slot)', {
+                deviceId,
+                metadata
+            });
+
             return res.status(404).json({
                 success: false,
-                message: 'Node not found'
+                message: 'Node not found. Nodes must be manually created and assigned to parking slots.',
+                deviceId
             });
         }
 
@@ -486,6 +495,7 @@ export const updateNodeStatus = async (req: Request, res: Response): Promise<Res
 
 /**
  * Update gateway status via ChirpStack webhook
+ * Auto-creates gateway if not exists with status='unassigned' and autoCreated=true
  */
 export const updateGatewayStatus = async (req: Request, res: Response): Promise<Response> => {
     try {
@@ -498,12 +508,50 @@ export const updateGatewayStatus = async (req: Request, res: Response): Promise<
             });
         }
 
-        const gateway = await gatewayService.updateGatewayStatus(gatewayId, metadata || {});
-        
+        let gateway = await gatewayService.updateGatewayStatus(gatewayId, metadata || {});
+
         if (!gateway) {
-            return res.status(404).json({
-                success: false,
-                message: 'Gateway not found'
+            // Auto-create gateway if not exists
+            const { AppDataSource } = await import('../data-source');
+            const { Gateway } = await import('../models/Gateway');
+            const gatewayRepository = AppDataSource.getRepository(Gateway);
+
+            // Create gateway with unassigned status
+            gateway = gatewayRepository.create({
+                chirpstackGatewayId: gatewayId,
+                name: `Auto-Gateway ${gatewayId.substring(0, 8)}`,
+                description: 'Auto-created from webhook',
+                isActive: true,
+                isLinked: false,
+                linkedAdmin: null as any,
+                createdBy: null as any,
+                lastSeen: new Date(),
+                metadata: {
+                    ...metadata,
+                    status: 'unassigned',
+                    autoCreated: true,
+                    createdAt: new Date().toISOString()
+                }
+            });
+
+            gateway = await gatewayRepository.save(gateway);
+
+            logger.info('Auto-created gateway from webhook', {
+                gatewayId,
+                gatewayDbId: gateway.id,
+                status: 'unassigned'
+            });
+
+            return res.status(201).json({
+                success: true,
+                message: 'Gateway auto-created successfully',
+                data: {
+                    gatewayId,
+                    gatewayDbId: gateway.id,
+                    status: 'unassigned',
+                    autoCreated: true,
+                    lastSeen: gateway.lastSeen
+                }
             });
         }
 

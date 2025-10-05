@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.unassignGatewayFromParkingLot = exports.assignGatewayToParkingLot = exports.deleteParkingLot = exports.updateParkingLot = exports.createParkingLot = exports.getParkingLotById = exports.getMyParkingLots = void 0;
+exports.getGatewaysByParkingLotId = exports.unassignGatewayFromParkingLot = exports.assignGatewayToParkingLot = exports.deleteParkingLot = exports.updateParkingLot = exports.createParkingLot = exports.getParkingLotById = exports.getMyParkingLots = void 0;
 const data_source_1 = require("../data-source");
 const ParkingLot_1 = require("../models/ParkingLot");
 const Gateway_1 = require("../models/Gateway");
@@ -375,3 +375,80 @@ const unassignGatewayFromParkingLot = async (req, res) => {
     }
 };
 exports.unassignGatewayFromParkingLot = unassignGatewayFromParkingLot;
+// Get gateways by parking lot ID
+const getGatewaysByParkingLotId = async (req, res) => {
+    const { id } = req.params;
+    try {
+        // Validate UUID
+        const idValidation = (0, validation_1.validateUuidParam)(id, 'id');
+        if (!idValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: idValidation.error
+            });
+        }
+        const parkingLotRepository = data_source_1.AppDataSource.getRepository(ParkingLot_1.ParkingLot);
+        const gatewayRepository = data_source_1.AppDataSource.getRepository(Gateway_1.Gateway);
+        // Check parking lot ownership
+        const parkingLot = await parkingLotRepository.findOne({
+            where: {
+                id: id,
+                admin: { id: req.user.id }
+            }
+        });
+        if (!parkingLot) {
+            return res.status(404).json({
+                success: false,
+                message: 'Parking lot not found or access denied'
+            });
+        }
+        // Get all gateways assigned to this parking lot
+        const gateways = await gatewayRepository.find({
+            where: {
+                parkingLot: { id: parkingLot.id },
+                linkedAdmin: { id: req.user.id }
+            },
+            relations: ['linkedAdmin'],
+            order: { createdAt: 'DESC' }
+        });
+        const formattedGateways = gateways.map(gateway => ({
+            id: gateway.id,
+            name: gateway.name,
+            chirpstackGatewayId: gateway.chirpstackGatewayId,
+            description: gateway.description,
+            location: gateway.location,
+            latitude: gateway.latitude,
+            longitude: gateway.longitude,
+            isOnline: gateway.isOnline,
+            isActive: gateway.isActive,
+            lastSeen: gateway.lastSeen,
+            metadata: gateway.metadata,
+            createdAt: gateway.createdAt,
+            updatedAt: gateway.updatedAt
+        }));
+        loggerService_1.logger.info('Gateways retrieved by parking lot', {
+            parkingLotId: id,
+            gatewayCount: gateways.length,
+            adminId: req.user.id
+        });
+        return res.json({
+            success: true,
+            message: `Found ${gateways.length} gateways for parking lot`,
+            data: formattedGateways,
+            count: gateways.length,
+            parkingLot: {
+                id: parkingLot.id,
+                name: parkingLot.name,
+                address: parkingLot.address
+            }
+        });
+    }
+    catch (error) {
+        loggerService_1.logger.error('Get gateways by parking lot error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to retrieve gateways for parking lot'
+        });
+    }
+};
+exports.getGatewaysByParkingLotId = getGatewaysByParkingLotId;

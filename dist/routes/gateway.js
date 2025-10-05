@@ -397,44 +397,6 @@ router.delete('/:id', auth_1.authenticateToken, (0, auth_1.requireRole)(['super_
 router.post('/:id/unlink', auth_1.authenticateToken, (0, auth_1.requireRole)(['admin']), gatewayController_1.unlinkGateway);
 /**
  * @swagger
- * /api/gateways/{id}/assign-parking-lot:
- *   post:
- *     summary: Assign gateway to parking lot (Admin only)
- *     tags: [Gateways - Admin]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Gateway ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - parkingLotId
- *             properties:
- *               parkingLotId:
- *                 type: string
- *                 format: uuid
- *                 example: "b1c2d3e4-f5g6-7890-bcde-fg1234567890"
- *     responses:
- *       200:
- *         description: Gateway assigned to parking lot successfully
- *       404:
- *         description: Gateway or parking lot not found
- *       403:
- *         description: Access denied
- */
-router.post('/:id/assign-parking-lot', auth_1.authenticateToken, (0, auth_1.requireRole)(['admin']), gatewayController_1.assignGatewayToParkingLot);
-/**
- * @swagger
  * /api/gateways/{id}/nodes:
  *   get:
  *     summary: Get nodes for a gateway

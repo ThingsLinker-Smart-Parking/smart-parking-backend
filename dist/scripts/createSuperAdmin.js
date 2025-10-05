@@ -23,7 +23,7 @@ async function createSuperAdmin() {
             return existingSuperAdmin;
         }
         // Create super admin user
-        const hashedPassword = await bcryptjs_1.default.hash('superadmin123', 10);
+        const hashedPassword = await bcryptjs_1.default.hash('SuperAdmin2024!', 10);
         const superAdmin = userRepository.create({
             email: 'superadmin@smartparking.com',
             passwordHash: hashedPassword,
@@ -35,7 +35,7 @@ async function createSuperAdmin() {
         });
         await userRepository.save(superAdmin);
         console.log('✅ Super admin created successfully:', superAdmin.email);
-        console.log('🔑 Password: superadmin123');
+        console.log('🔑 Password: SuperAdmin2024!');
         return superAdmin;
     }
     catch (error) {

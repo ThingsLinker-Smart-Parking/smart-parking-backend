@@ -171,6 +171,17 @@ app.use("/api/auth", authLimiter); // Stricter limit for authentication
 app.use("/api/health/detailed", strictLimiter); // Strict limit for sensitive admin endpoints
 app.use("/api", generalApiLimiter); // General limit for all API endpoints
 
+// Export Swagger JSON endpoint
+app.get("/swagger.json", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  res.send(specs);
+});
+
+app.get("/api-docs.json", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  res.send(specs);
+});
+
 // Swagger UI - MUST come before routes
 app.use(
   "/api-docs",
@@ -235,6 +246,8 @@ app.get("/api/test", (req, res) => {
     message: "Server is working!",
     timestamp: new Date().toISOString(),
     swagger: `${baseUrl}/api-docs`,
+    swaggerJson: `${baseUrl}/swagger.json`,
+    openApiJson: `${baseUrl}/api-docs.json`,
     environment: process.env.NODE_ENV || 'development',
     port: port
   });

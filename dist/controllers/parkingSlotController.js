@@ -1,10 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAllParkingSlots = exports.bulkCreateParkingSlots = exports.getParkingSlotStatus = exports.unassignNodeFromParkingSlot = exports.assignNodeToParkingSlot = exports.deleteParkingSlot = exports.updateParkingSlot = exports.createParkingSlot = exports.getParkingSlotById = exports.getParkingSlotsByFloor = void 0;
+exports.getAllParkingSlots = exports.quickAssignNode = exports.bulkCreateParkingSlots = exports.getParkingSlotStatus = exports.unassignNodeFromParkingSlot = exports.assignNodeToParkingSlot = exports.deleteParkingSlot = exports.updateParkingSlot = exports.createParkingSlot = exports.getParkingSlotById = exports.getParkingSlotsByFloor = void 0;
 const data_source_1 = require("../data-source");
 const ParkingSlot_1 = require("../models/ParkingSlot");
 const Floor_1 = require("../models/Floor");
 const Node_1 = require("../models/Node");
+const ParkingStatusLog_1 = require("../models/ParkingStatusLog");
 const validation_1 = require("../utils/validation");
 const loggerService_1 = require("../services/loggerService");
 // Get all parking slots for a specific floor
@@ -464,63 +465,25 @@ const getParkingSlotStatus = async (req, res) => {
                 message: 'No sensor node found for this parking slot'
             });
         }
-        // Generate realistic historical data (simplified - in production this would come from a database)
-        const historicalData = [];
-        const now = new Date();
+        // Get actual historical data from database
+        const statusLogRepository = data_source_1.AppDataSource.getRepository(ParkingStatusLog_1.ParkingStatusLog);
         const limitNum = parseInt(limit);
-        // Generate dynamic historical data with realistic changes
-        for (let i = limitNum - 1; i >= 0; i--) {
-            const timestamp = new Date(now.getTime() - (i * 5 * 60 * 1000)); // 5 minutes apart
-            // Simulate realistic parking patterns
-            const timeOfDay = timestamp.getHours();
-            let percentage;
-            let distance;
-            let status;
-            let batteryLevel;
-            // Generate varying data based on time and randomness
-            if (i === 0) {
-                // Current values
-                percentage = node.percentage || 50;
-                distance = node.distance || 50;
-                batteryLevel = node.batteryLevel || 100;
-            }
-            else {
-                // Historical simulation with realistic patterns
-                const randomFactor = Math.random();
-                // Peak hours (8-10 AM, 5-7 PM) tend to be more occupied
-                const isPeakHour = (timeOfDay >= 8 && timeOfDay <= 10) || (timeOfDay >= 17 && timeOfDay <= 19);
-                if (isPeakHour) {
-                    // More likely to be occupied during peak hours
-                    percentage = randomFactor < 0.7 ? 30 + Math.floor(Math.random() * 30) : 80 + Math.floor(Math.random() * 20);
-                }
-                else {
-                    // More likely to be available during off-peak hours
-                    percentage = randomFactor < 0.4 ? 30 + Math.floor(Math.random() * 30) : 80 + Math.floor(Math.random() * 20);
-                }
-                distance = percentage + Math.floor(Math.random() * 20) - 10; // Add some variance
-                distance = Math.max(10, Math.min(200, distance)); // Keep within realistic bounds
-                // Battery slowly decreases over time
-                batteryLevel = Math.max(70, 100 - Math.floor(i * 2) + Math.floor(Math.random() * 5));
-            }
-            // Determine status based on percentage
-            if (percentage >= 80) {
-                status = 'available';
-            }
-            else if (percentage < 60) {
-                status = 'reserved';
-            }
-            else {
-                status = null; // indeterminate
-            }
-            historicalData.push({
-                timestamp: timestamp.toISOString(),
-                status: status,
-                percentage: percentage,
-                distance: distance,
-                batteryLevel: batteryLevel,
-                isOnline: batteryLevel > 20 && Math.random() > 0.1 // Occasionally offline
-            });
-        }
+        const statusLogs = await statusLogRepository.find({
+            where: {
+                parkingSlot: { id: parkingSlot.id }
+            },
+            order: { detectedAt: 'DESC' },
+            take: limitNum
+        });
+        // Format historical data from database records (reverse to show oldest first)
+        const historicalData = statusLogs.reverse().map(log => ({
+            timestamp: log.detectedAt.toISOString(),
+            status: log.status,
+            percentage: log.percentage ? parseFloat(log.percentage.toString()) : null,
+            distance: log.distance ? parseFloat(log.distance.toString()) : null,
+            batteryLevel: log.batteryLevel,
+            isOnline: log.metadata?.isOnline ?? true
+        }));
         // Current status
         const currentStatus = {
             slotId: parkingSlot.id,
@@ -664,6 +627,104 @@ const bulkCreateParkingSlots = async (req, res) => {
     }
 };
 exports.bulkCreateParkingSlots = bulkCreateParkingSlots;
+// Quick assign node to parking slot using ChirpStack Device ID
+const quickAssignNode = async (req, res) => {
+    const { slotId, chirpstackDeviceId } = req.body;
+    try {
+        // Validate required fields
+        if (!slotId || !chirpstackDeviceId) {
+            return res.status(400).json({
+                success: false,
+                message: 'slotId and chirpstackDeviceId are required'
+            });
+        }
+        // Validate UUID for slotId
+        const slotIdValidation = (0, validation_1.validateUuidParam)(slotId, 'slotId');
+        if (!slotIdValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: slotIdValidation.error
+            });
+        }
+        const parkingSlotRepository = data_source_1.AppDataSource.getRepository(ParkingSlot_1.ParkingSlot);
+        const nodeRepository = data_source_1.AppDataSource.getRepository(Node_1.Node);
+        // Check if parking slot exists and belongs to authenticated admin
+        const parkingSlot = await parkingSlotRepository.findOne({
+            where: {
+                id: slotId,
+                floor: { parkingLot: { admin: { id: req.user.id } } }
+            },
+            relations: ['node', 'floor', 'floor.parkingLot']
+        });
+        if (!parkingSlot) {
+            return res.status(404).json({
+                success: false,
+                message: 'Slot not found or access denied'
+            });
+        }
+        // Check if slot already has a node
+        if (parkingSlot.node) {
+            return res.status(400).json({
+                success: false,
+                message: `Slot already has node ${parkingSlot.node.name || parkingSlot.node.id}`
+            });
+        }
+        // Find node by ChirpStack Device ID
+        const node = await nodeRepository.findOne({
+            where: {
+                chirpstackDeviceId: chirpstackDeviceId,
+                admin: { id: req.user.id }
+            },
+            relations: ['parkingSlot']
+        });
+        if (!node) {
+            return res.status(404).json({
+                success: false,
+                message: 'Node not found with that ChirpStack Device ID'
+            });
+        }
+        // Check if node is already assigned to another parking slot
+        if (node.parkingSlot) {
+            return res.status(400).json({
+                success: false,
+                message: `Node already assigned to slot ${node.parkingSlot.name || node.parkingSlot.id}`
+            });
+        }
+        // Assign node to parking slot
+        node.parkingSlot = parkingSlot;
+        await nodeRepository.save(node);
+        loggerService_1.logger.info('Node assigned to parking slot via quick-assign', {
+            slotId: parkingSlot.id,
+            slotName: parkingSlot.name,
+            nodeId: node.id,
+            chirpstackDeviceId: node.chirpstackDeviceId,
+            adminId: req.user.id
+        });
+        return res.json({
+            success: true,
+            message: `Node assigned to slot ${parkingSlot.name}`,
+            data: {
+                slot: {
+                    id: parkingSlot.id,
+                    name: parkingSlot.name,
+                    node: {
+                        id: node.id,
+                        name: node.name,
+                        chirpstackDeviceId: node.chirpstackDeviceId
+                    }
+                }
+            }
+        });
+    }
+    catch (error) {
+        loggerService_1.logger.error('Quick assign node error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to assign node to parking slot'
+        });
+    }
+};
+exports.quickAssignNode = quickAssignNode;
 // Get all parking slots for current admin
 const getAllParkingSlots = async (req, res) => {
     try {

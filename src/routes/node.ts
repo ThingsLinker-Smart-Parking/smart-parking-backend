@@ -6,7 +6,8 @@ import {
     updateNode,
     updateNodeStatus,
     deleteNode,
-    getNodesBySlots
+    getNodesBySlots,
+    getUnassignedNodes
 } from '../controllers/nodeController';
 import { authenticateToken as auth } from '../middleware/auth';
 import { validateBody, nodeSchemas } from '../validation';
@@ -353,6 +354,86 @@ router.route('/:nodeId')
  *                       format: date-time
  */
 router.put('/:nodeId/status', auth, validateBody(nodeSchemas.updateStatus), updateNodeStatus);
+
+/**
+ * @swagger
+ * /api/nodes/unassigned:
+ *   get:
+ *     summary: Get unassigned nodes
+ *     description: Get all nodes that are not assigned to any parking slot. Supports pagination and optional gateway filtering.
+ *     tags: [Nodes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *         example: 1
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 50
+ *         description: Number of items per page
+ *         example: 50
+ *       - in: query
+ *         name: gatewayId
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by specific gateway ID
+ *         example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+ *     responses:
+ *       200:
+ *         description: Unassigned nodes retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       name:
+ *                         type: string
+ *                       chirpstackDeviceId:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                         example: 'unassigned'
+ *                       batteryLevel:
+ *                         type: number
+ *                         nullable: true
+ *                       gatewayId:
+ *                         type: string
+ *                         nullable: true
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                 count:
+ *                   type: integer
+ *                   example: 45
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ */
+router.get('/unassigned', auth, getUnassignedNodes);
 
 /**
  * @swagger

@@ -699,6 +699,115 @@ export const bulkCreateParkingSlots = async (req: AuthRequest, res: Response): P
     }
 };
 
+// Quick assign node to parking slot using ChirpStack Device ID
+export const quickAssignNode = async (req: AuthRequest, res: Response): Promise<Response> => {
+    const { slotId, chirpstackDeviceId } = req.body;
+
+    try {
+        // Validate required fields
+        if (!slotId || !chirpstackDeviceId) {
+            return res.status(400).json({
+                success: false,
+                message: 'slotId and chirpstackDeviceId are required'
+            });
+        }
+
+        // Validate UUID for slotId
+        const slotIdValidation = validateUuidParam(slotId, 'slotId');
+        if (!slotIdValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: slotIdValidation.error
+            });
+        }
+
+        const parkingSlotRepository = AppDataSource.getRepository(ParkingSlot);
+        const nodeRepository = AppDataSource.getRepository(Node);
+
+        // Check if parking slot exists and belongs to authenticated admin
+        const parkingSlot = await parkingSlotRepository.findOne({
+            where: {
+                id: slotId,
+                floor: { parkingLot: { admin: { id: req.user!.id } } }
+            },
+            relations: ['node', 'floor', 'floor.parkingLot']
+        });
+
+        if (!parkingSlot) {
+            return res.status(404).json({
+                success: false,
+                message: 'Slot not found or access denied'
+            });
+        }
+
+        // Check if slot already has a node
+        if (parkingSlot.node) {
+            return res.status(400).json({
+                success: false,
+                message: `Slot already has node ${parkingSlot.node.name || parkingSlot.node.id}`
+            });
+        }
+
+        // Find node by ChirpStack Device ID
+        const node = await nodeRepository.findOne({
+            where: {
+                chirpstackDeviceId: chirpstackDeviceId,
+                admin: { id: req.user!.id }
+            },
+            relations: ['parkingSlot']
+        });
+
+        if (!node) {
+            return res.status(404).json({
+                success: false,
+                message: 'Node not found with that ChirpStack Device ID'
+            });
+        }
+
+        // Check if node is already assigned to another parking slot
+        if (node.parkingSlot) {
+            return res.status(400).json({
+                success: false,
+                message: `Node already assigned to slot ${node.parkingSlot.name || node.parkingSlot.id}`
+            });
+        }
+
+        // Assign node to parking slot
+        node.parkingSlot = parkingSlot;
+        await nodeRepository.save(node);
+
+        logger.info('Node assigned to parking slot via quick-assign', {
+            slotId: parkingSlot.id,
+            slotName: parkingSlot.name,
+            nodeId: node.id,
+            chirpstackDeviceId: node.chirpstackDeviceId,
+            adminId: req.user!.id
+        });
+
+        return res.json({
+            success: true,
+            message: `Node assigned to slot ${parkingSlot.name}`,
+            data: {
+                slot: {
+                    id: parkingSlot.id,
+                    name: parkingSlot.name,
+                    node: {
+                        id: node.id,
+                        name: node.name,
+                        chirpstackDeviceId: node.chirpstackDeviceId
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        logger.error('Quick assign node error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to assign node to parking slot'
+        });
+    }
+};
+
 // Get all parking slots for current admin
 export const getAllParkingSlots = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {

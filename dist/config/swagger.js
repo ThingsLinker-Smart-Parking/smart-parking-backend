@@ -15,17 +15,21 @@ const swaggerOptions = {
             description: `
 # Smart Parking System API
 
-🎉 **LATEST UPDATES - API Issues Resolved**: Major API stability improvements and new endpoints added.
+🎉 **LATEST UPDATES - Node Model Architecture Fixed**: Major improvements to IoT sensor management and API stability.
 
 ## Recent Fixes & Improvements:
-- ✅ **New Endpoints Added**: \`GET /api/floors\` and \`GET /api/parking-slots\` for comprehensive data access
-- ✅ **Subscription Status**: \`GET /api/subscriptions/status\` for detailed subscription information
-- ✅ **Database Schema Fixed**: Resolved column name inconsistencies and missing schema elements
-- ✅ **Subscription Middleware**: Fixed authentication and limit checking issues
-- ✅ **API Success Rate**: Improved from 22% to 67% success rate across endpoints
+- ✅ **Node Model Restructured**: Nodes now directly connect to parking slots (not gateways)
+- ✅ **ChirpStack Integration**: Gateway information comes from MQTT data, not database relationships
+- ✅ **Enhanced Validation**: Comprehensive node creation with ChirpStack Device ID validation
+- ✅ **Real-time Status**: Improved parking slot occupancy detection with percentage-based logic
+- ✅ **API Architecture**: Proper hierarchy enforcement for smart parking infrastructure
+- ✅ **Database Schema**: Updated schema migration for production compatibility
 
 ## Hierarchy Structure
-The system enforces a strict hierarchy: **User (Admin) → ParkingLot → Floor → ParkingSlot → Node**
+The system enforces a strict hierarchy: **User (Admin) → ParkingLot → Floor → ParkingSlot ← Node**
+- **Nodes** (IoT sensors) are directly connected to **ParkingSlots** (not gateways)
+- **Gateway information** comes from ChirpStack MQTT data, not direct relationships
+- **Real-time data** flows: ChirpStack → MQTT → Node metadata → Parking status
 
 ### Key Features:
 - 🏗️ **Hierarchical Data Management**: Organized parking infrastructure with proper relationships
@@ -124,13 +128,95 @@ The system enforces a strict hierarchy: **User (Admin) → ParkingLot → Floor 
                     type: 'object',
                     properties: {
                         id: { type: 'string', format: 'uuid', example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' },
-                        deviceId: { type: 'string', example: 'SENSOR_001' },
-                        deviceType: { type: 'string', enum: ['occupancy_sensor'], example: 'occupancy_sensor' },
-                        status: { type: 'string', enum: ['online', 'offline'], example: 'online' },
-                        batteryLevel: { type: 'number', example: 85.5 },
-                        lastSeenAt: { type: 'string', format: 'date-time' },
-                        createdAt: { type: 'string', format: 'date-time' }
+                        name: { type: 'string', example: 'Parking Sensor A-001' },
+                        chirpstackDeviceId: { type: 'string', example: '0123456789ABCDEF', description: '16-character hexadecimal ChirpStack device ID' },
+                        description: { type: 'string', example: 'Ultrasonic sensor for parking slot A-001' },
+                        latitude: { type: 'number', format: 'decimal', example: 40.7128 },
+                        longitude: { type: 'number', format: 'decimal', example: -74.0060 },
+                        lastSeen: { type: 'string', format: 'date-time' },
+                        isActive: { type: 'boolean', example: true },
+                        status: { type: 'string', enum: ['online', 'offline', 'inactive'], example: 'online' },
+                        isOnline: { type: 'boolean', example: true },
+                        batteryLevel: { type: 'number', example: 85.5, description: 'Battery level percentage (0-100)' },
+                        distance: { type: 'number', example: 15.5, description: 'Distance reading from sensor in cm' },
+                        percentage: { type: 'number', example: 82, description: 'Occupancy percentage (80-100% = available, <60% = occupied)' },
+                        slotStatus: { type: 'string', enum: ['available', 'occupied', 'unknown'], example: 'available' },
+                        parkingSlot: {
+                            type: 'object',
+                            properties: {
+                                id: { type: 'string', format: 'uuid' },
+                                name: { type: 'string', example: 'A-001' },
+                                floor: { type: 'string', example: 'Ground Floor' },
+                                parkingLot: { type: 'string', example: 'Main Parking Garage' }
+                            }
+                        },
+                        gateway: {
+                            type: 'object',
+                            properties: {
+                                id: { type: 'string', description: 'Gateway ID from ChirpStack metadata' },
+                                name: { type: 'string', example: 'ChirpStack Gateway' }
+                            },
+                            description: 'Gateway information from ChirpStack data, not direct relationship'
+                        },
+                        metadata: {
+                            type: 'object',
+                            description: 'Sensor data and ChirpStack information',
+                            properties: {
+                                signalQuality: { type: 'string', enum: ['excellent', 'good', 'fair', 'poor'] },
+                                rssi: { type: 'number', example: -75 },
+                                snr: { type: 'number', example: 8.5 },
+                                gatewayId: { type: 'string', description: 'ChirpStack gateway ID' },
+                                lastChirpStackUpdate: { type: 'string', format: 'date-time' },
+                                state: { type: 'string', enum: ['FREE', 'OCCUPIED'], description: 'ChirpStack sensor state' }
+                            }
+                        },
+                        createdAt: { type: 'string', format: 'date-time' },
+                        updatedAt: { type: 'string', format: 'date-time' }
                     }
+                },
+                NodeCreateRequest: {
+                    type: 'object',
+                    required: ['name', 'chirpstackDeviceId', 'parkingSlotId'],
+                    properties: {
+                        name: { type: 'string', example: 'Parking Sensor A-001', description: 'Name of the node' },
+                        chirpstackDeviceId: {
+                            type: 'string',
+                            example: '0123456789ABCDEF',
+                            pattern: '^[0-9a-fA-F]{16}$',
+                            description: '16-character hexadecimal ChirpStack device ID (unique identifier)'
+                        },
+                        description: { type: 'string', example: 'Ultrasonic sensor for parking slot A-001', description: 'Optional description of the node' },
+                        parkingSlotId: {
+                            type: 'string',
+                            format: 'uuid',
+                            example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                            description: 'UUID of the parking slot this node will monitor'
+                        },
+                        latitude: { type: 'number', format: 'decimal', example: 40.7128, description: 'GPS latitude coordinate' },
+                        longitude: { type: 'number', format: 'decimal', example: -74.0060, description: 'GPS longitude coordinate' }
+                    }
+                },
+                NodeUpdateStatusRequest: {
+                    type: 'object',
+                    properties: {
+                        distance: { type: 'number', minimum: 0, example: 15.5, description: 'Distance reading from sensor in cm' },
+                        percentage: {
+                            type: 'number',
+                            minimum: 0,
+                            maximum: 100,
+                            example: 82,
+                            description: 'Occupancy percentage (80-100% = available, <60% = occupied)'
+                        },
+                        batteryLevel: {
+                            type: 'number',
+                            minimum: 0,
+                            maximum: 100,
+                            example: 92,
+                            description: 'Battery level percentage'
+                        }
+                    },
+                    minProperties: 1,
+                    description: 'At least one status field must be provided'
                 },
                 SubscriptionStatus: {
                     type: 'object',

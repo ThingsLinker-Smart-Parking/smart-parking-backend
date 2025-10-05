@@ -1,6 +1,39 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateGatewayStatus = exports.updateNodeStatus = exports.getGatewayStatistics = exports.getGatewayNodes = exports.createNode = exports.assignGatewayToParkingLot = exports.getLinkedGateways = exports.unlinkGateway = exports.linkGateway = exports.getAvailableGateways = exports.deleteGateway = exports.updateGateway = exports.getGatewayById = exports.getAllGateways = exports.createGateway = void 0;
+exports.updateGatewayStatus = exports.updateNodeStatus = exports.getGatewayStatistics = exports.getGatewayNodes = exports.createNode = exports.getLinkedGateways = exports.unlinkGateway = exports.linkGateway = exports.getAvailableGateways = exports.deleteGateway = exports.updateGateway = exports.getGatewayById = exports.getAllGateways = exports.createGateway = void 0;
 const gatewayService_1 = require("../services/gatewayService");
 const validation_1 = require("../utils/validation");
 const loggerService_1 = require("../services/loggerService");
@@ -25,7 +58,7 @@ const validateNodeInput = (data) => {
         errors.push('ChirpStack Device ID is required');
     if (!data.name)
         errors.push('Node name is required');
-    if (!data.gatewayId || !(0, validation_1.validatePositiveInteger)(data.gatewayId)) {
+    if (!data.gatewayId || !(0, validation_1.validateUuid)(data.gatewayId)) {
         errors.push('Valid Gateway ID is required');
     }
     if (data.latitude && !(0, validation_1.validateCoordinates)(data.latitude, 'latitude')) {
@@ -106,7 +139,7 @@ exports.getAllGateways = getAllGateways;
 const getGatewayById = async (req, res) => {
     try {
         const { id } = req.params;
-        if (!(0, validation_1.validatePositiveInteger)(id)) {
+        if (!(0, validation_1.validateUuid)(id)) {
             return res.status(400).json({
                 success: false,
                 message: 'Valid gateway ID is required'
@@ -140,7 +173,7 @@ const updateGateway = async (req, res) => {
     try {
         const { id } = req.params;
         const { name, description, location, latitude, longitude, isActive, metadata } = req.body;
-        if (!(0, validation_1.validatePositiveInteger)(id)) {
+        if (!(0, validation_1.validateUuid)(id)) {
             return res.status(400).json({
                 success: false,
                 message: 'Valid gateway ID is required'
@@ -190,7 +223,7 @@ exports.updateGateway = updateGateway;
 const deleteGateway = async (req, res) => {
     try {
         const { id } = req.params;
-        if (!(0, validation_1.validatePositiveInteger)(id)) {
+        if (!(0, validation_1.validateUuid)(id)) {
             return res.status(400).json({
                 success: false,
                 message: 'Valid gateway ID is required'
@@ -240,7 +273,7 @@ const linkGateway = async (req, res) => {
     try {
         const { gatewayId } = req.body;
         const adminId = req.user.id;
-        if (!gatewayId || !(0, validation_1.validatePositiveInteger)(gatewayId)) {
+        if (!gatewayId || !(0, validation_1.validateUuid)(gatewayId)) {
             return res.status(400).json({
                 success: false,
                 message: 'Valid gateway ID is required'
@@ -272,7 +305,7 @@ const unlinkGateway = async (req, res) => {
     try {
         const { id } = req.params;
         const adminId = req.user.id;
-        if (!(0, validation_1.validatePositiveInteger)(id)) {
+        if (!(0, validation_1.validateUuid)(id)) {
             return res.status(400).json({
                 success: false,
                 message: 'Valid gateway ID is required'
@@ -316,36 +349,6 @@ const getLinkedGateways = async (req, res) => {
     }
 };
 exports.getLinkedGateways = getLinkedGateways;
-/**
- * Assign gateway to parking lot (Admin only)
- */
-const assignGatewayToParkingLot = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { parkingLotId } = req.body;
-        const adminId = req.user.id;
-        if (!(0, validation_1.validatePositiveInteger)(id) || !(0, validation_1.validatePositiveInteger)(parkingLotId)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Valid gateway ID and parking lot ID are required'
-            });
-        }
-        const gateway = await gatewayService_1.gatewayService.assignGatewayToParkingLot(id, parkingLotId, adminId);
-        return res.json({
-            success: true,
-            message: 'Gateway assigned to parking lot successfully',
-            data: gateway
-        });
-    }
-    catch (error) {
-        loggerService_1.logger.error('Assign gateway to parking lot error:', error);
-        return res.status(500).json({
-            success: false,
-            message: error instanceof Error ? error.message : 'Internal server error'
-        });
-    }
-};
-exports.assignGatewayToParkingLot = assignGatewayToParkingLot;
 /**
  * Create node under gateway (Admin only)
  */
@@ -395,7 +398,7 @@ const getGatewayNodes = async (req, res) => {
     try {
         const { id } = req.params;
         const adminId = req.user.role === 'super_admin' ? undefined : req.user.id;
-        if (!(0, validation_1.validatePositiveInteger)(id)) {
+        if (!(0, validation_1.validateUuid)(id)) {
             return res.status(400).json({
                 success: false,
                 message: 'Valid gateway ID is required'
@@ -449,6 +452,7 @@ exports.getGatewayStatistics = getGatewayStatistics;
 // Webhook endpoints for ChirpStack integration
 /**
  * Update node status via ChirpStack webhook
+ * Auto-creates node if not exists with status='unassigned' and autoCreated=true
  */
 const updateNodeStatus = async (req, res) => {
     try {
@@ -459,11 +463,18 @@ const updateNodeStatus = async (req, res) => {
                 message: 'Device ID is required'
             });
         }
-        const node = await gatewayService_1.gatewayService.updateNodeStatus(deviceId, metadata || {});
+        let node = await gatewayService_1.gatewayService.updateNodeStatus(deviceId, metadata || {});
         if (!node) {
+            // Node not found - cannot auto-create because nodes require parking slot
+            // Log the attempt for admin to manually create the node
+            loggerService_1.logger.warn('Node not found in webhook, cannot auto-create (requires parking slot)', {
+                deviceId,
+                metadata
+            });
             return res.status(404).json({
                 success: false,
-                message: 'Node not found'
+                message: 'Node not found. Nodes must be manually created and assigned to parking slots.',
+                deviceId
             });
         }
         return res.json({
@@ -483,6 +494,7 @@ const updateNodeStatus = async (req, res) => {
 exports.updateNodeStatus = updateNodeStatus;
 /**
  * Update gateway status via ChirpStack webhook
+ * Auto-creates gateway if not exists with status='unassigned' and autoCreated=true
  */
 const updateGatewayStatus = async (req, res) => {
     try {
@@ -493,11 +505,45 @@ const updateGatewayStatus = async (req, res) => {
                 message: 'Gateway ID is required'
             });
         }
-        const gateway = await gatewayService_1.gatewayService.updateGatewayStatus(gatewayId, metadata || {});
+        let gateway = await gatewayService_1.gatewayService.updateGatewayStatus(gatewayId, metadata || {});
         if (!gateway) {
-            return res.status(404).json({
-                success: false,
-                message: 'Gateway not found'
+            // Auto-create gateway if not exists
+            const { AppDataSource } = await Promise.resolve().then(() => __importStar(require('../data-source')));
+            const { Gateway } = await Promise.resolve().then(() => __importStar(require('../models/Gateway')));
+            const gatewayRepository = AppDataSource.getRepository(Gateway);
+            // Create gateway with unassigned status
+            gateway = gatewayRepository.create({
+                chirpstackGatewayId: gatewayId,
+                name: `Auto-Gateway ${gatewayId.substring(0, 8)}`,
+                description: 'Auto-created from webhook',
+                isActive: true,
+                isLinked: false,
+                linkedAdmin: null,
+                createdBy: null,
+                lastSeen: new Date(),
+                metadata: {
+                    ...metadata,
+                    status: 'unassigned',
+                    autoCreated: true,
+                    createdAt: new Date().toISOString()
+                }
+            });
+            gateway = await gatewayRepository.save(gateway);
+            loggerService_1.logger.info('Auto-created gateway from webhook', {
+                gatewayId,
+                gatewayDbId: gateway.id,
+                status: 'unassigned'
+            });
+            return res.status(201).json({
+                success: true,
+                message: 'Gateway auto-created successfully',
+                data: {
+                    gatewayId,
+                    gatewayDbId: gateway.id,
+                    status: 'unassigned',
+                    autoCreated: true,
+                    lastSeen: gateway.lastSeen
+                }
             });
         }
         return res.json({

@@ -70,11 +70,18 @@ class SubscriptionService {
             if (!plan) {
                 throw new Error("Subscription plan not found or inactive");
             }
-            // Check for existing active subscription
+            // Cancel any old pending subscriptions to allow retry
+            await subscriptionRepository.update({
+                admin: { id: data.userId },
+                status: "pending",
+            }, {
+                status: "cancelled",
+            });
+            // Check for existing active subscription (exclude pending - allow retry on failed/cancelled payments)
             const existingSubscription = await subscriptionRepository.findOne({
                 where: {
                     admin: { id: data.userId },
-                    status: (0, typeorm_1.In)(["active", "trial", "pending"]),
+                    status: (0, typeorm_1.In)(["active", "trial"]),
                 },
             });
             if (existingSubscription) {
@@ -147,10 +154,18 @@ class SubscriptionService {
             if (!plan) {
                 throw new Error("Subscription plan not found or inactive");
             }
+            // Cancel any old pending subscriptions to allow retry
+            await subscriptionRepository.update({
+                admin: { id: data.userId },
+                status: "pending",
+            }, {
+                status: "cancelled",
+            });
+            // Check for existing active subscription (exclude pending - allow retry on failed/cancelled payments)
             const existingSubscription = await subscriptionRepository.findOne({
                 where: {
                     admin: { id: data.userId },
-                    status: (0, typeorm_1.In)(["active", "trial", "pending"]),
+                    status: (0, typeorm_1.In)(["active", "trial"]),
                 },
             });
             if (existingSubscription) {
