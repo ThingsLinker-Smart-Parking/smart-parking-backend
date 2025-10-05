@@ -399,15 +399,16 @@ export const updateNodeStatus = async (req: AuthRequest, res: Response): Promise
         }
 
         // Determine slot status based on percentage
+        // Logic: >= 80% = available (car far/not there), < 60% = occupied (car close/present)
         let slotStatus: 'available' | 'occupied' | 'reserved' | 'unknown' = 'unknown';
         if (percentage !== undefined) {
             if (percentage >= 80) {
                 slotStatus = 'available';
             } else if (percentage < 60) {
-                slotStatus = 'reserved';
-            } else {
-                // Indeterminate range (60-79%)
                 slotStatus = 'occupied';
+            } else {
+                // Indeterminate range (60-79%) - transition state
+                slotStatus = 'unknown';
             }
         }
 

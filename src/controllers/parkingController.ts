@@ -412,6 +412,7 @@ export const updateNodeData = async (req: AuthRequest, res: Response): Promise<R
 export const getDashboardStats = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
         const nodeRepository = AppDataSource.getRepository(Node);
+        const parkingSlotRepository = AppDataSource.getRepository(ParkingSlot);
         const statusLogRepository = AppDataSource.getRepository(ParkingStatusLog);
 
         // Get all nodes for this admin
@@ -422,6 +423,42 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
             relations: ['parkingSlot', 'parkingSlot.floor', 'parkingSlot.floor.parkingLot', 'gateway']
         });
 
+        // Get all parking slots for this admin with their latest status
+        const allSlots = await parkingSlotRepository
+            .createQueryBuilder('slot')
+            .leftJoinAndSelect('slot.floor', 'floor')
+            .leftJoinAndSelect('floor.parkingLot', 'lot')
+            .leftJoinAndSelect('slot.node', 'node')
+            .where('lot.admin = :adminId', { adminId: req.user!.id })
+            .getMany();
+
+        // Get latest status for each slot
+        const slotStatusCounts = {
+            available: 0,
+            occupied: 0,
+            reserved: 0,
+            unknown: 0
+        };
+
+        for (const slot of allSlots) {
+            // Get the most recent status log for this slot
+            const latestLog = await statusLogRepository.findOne({
+                where: { parkingSlot: { id: slot.id } },
+                order: { detectedAt: 'DESC' }
+            });
+
+            if (latestLog) {
+                const status = latestLog.status;
+                if (status === 'available') slotStatusCounts.available++;
+                else if (status === 'occupied') slotStatusCounts.occupied++;
+                else if (status === 'reserved') slotStatusCounts.reserved++;
+                else slotStatusCounts.unknown++;
+            } else {
+                // No status log, default to available
+                slotStatusCounts.available++;
+            }
+        }
+
         // Calculate statistics
         const stats = {
             totalNodes: nodes.length,
@@ -429,10 +466,11 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
             offlineNodes: nodes.filter(node => !node.isOnline && node.isActive).length,
             inactiveNodes: nodes.filter(node => !node.isActive).length,
 
-            totalSlots: nodes.filter(node => node.parkingSlot).length,
-            availableSlots: nodes.filter(node => node.slotStatus === 'available').length,
-            occupiedSlots: nodes.filter(node => node.slotStatus === 'occupied').length,
-            unknownSlots: nodes.filter(node => node.slotStatus === 'unknown').length,
+            totalSlots: allSlots.length,
+            availableSlots: slotStatusCounts.available,
+            occupiedSlots: slotStatusCounts.occupied,
+            reservedSlots: slotStatusCounts.reserved,
+            unknownSlots: slotStatusCounts.unknown,
 
             averageBatteryLevel: nodes.reduce((sum, node) => sum + (node.batteryLevel || 0), 0) / nodes.length || 0,
             lowBatteryNodes: nodes.filter(node => (node.batteryLevel || 100) < 20).length,
