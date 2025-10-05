@@ -229,7 +229,8 @@ export const getSubscriptionStatus = async (userId: string) => {
   const activeSubscription = await subscriptionRepository
     .createQueryBuilder('subscription')
     .leftJoinAndSelect('subscription.plan', 'plan')
-    .where('subscription.adminId = :userId', { userId })
+    .leftJoinAndSelect('subscription.admin', 'admin')
+    .where('admin.id = :userId', { userId })
     .andWhere('subscription.status = :status', { status: 'active' })
     .orderBy('subscription.endDate', 'DESC')
     .getOne();
