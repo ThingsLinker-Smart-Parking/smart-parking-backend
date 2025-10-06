@@ -420,19 +420,26 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
             where: {
                 admin: { id: req.user!.id }
             },
-            relations: ['parkingSlot', 'parkingSlot.floor', 'parkingSlot.floor.parkingLot', 'gateway']
+            relations: ['parkingSlot']
         });
 
-        // Get all parking slots for this admin with their latest status
+        // Get all parking slots for this admin
         const allSlots = await parkingSlotRepository
             .createQueryBuilder('slot')
             .leftJoinAndSelect('slot.floor', 'floor')
             .leftJoinAndSelect('floor.parkingLot', 'lot')
-            .leftJoinAndSelect('slot.node', 'node')
             .where('lot.admin = :adminId', { adminId: req.user!.id })
             .getMany();
 
-        // Get latest status for each slot
+        // Create a map of slotId -> node for quick lookup
+        const slotNodeMap = new Map<string, typeof nodes[0]>();
+        nodes.forEach(node => {
+            if (node.parkingSlot) {
+                slotNodeMap.set(node.parkingSlot.id, node);
+            }
+        });
+
+        // Count slot statuses
         const slotStatusCounts = {
             available: 0,
             occupied: 0,
@@ -441,21 +448,32 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
         };
 
         for (const slot of allSlots) {
-            // Get the most recent status log for this slot
-            const latestLog = await statusLogRepository.findOne({
-                where: { parkingSlot: { id: slot.id } },
-                order: { detectedAt: 'DESC' }
-            });
+            // Check if this slot has a node
+            const node = slotNodeMap.get(slot.id);
 
-            if (latestLog) {
-                const status = latestLog.status;
+            if (node) {
+                // Use the node's current slotStatus
+                const status = node.slotStatus || 'unknown';
                 if (status === 'available') slotStatusCounts.available++;
                 else if (status === 'occupied') slotStatusCounts.occupied++;
-                else if (status === 'reserved') slotStatusCounts.reserved++;
                 else slotStatusCounts.unknown++;
             } else {
-                // No status log, default to available
-                slotStatusCounts.available++;
+                // Slot without node - try to get from status log
+                const latestLog = await statusLogRepository.findOne({
+                    where: { parkingSlot: { id: slot.id } },
+                    order: { detectedAt: 'DESC' }
+                });
+
+                if (latestLog) {
+                    const status = latestLog.status;
+                    if (status === 'available') slotStatusCounts.available++;
+                    else if (status === 'occupied') slotStatusCounts.occupied++;
+                    else if (status === 'reserved') slotStatusCounts.reserved++;
+                    else slotStatusCounts.unknown++;
+                } else {
+                    // No status log and no node, default to unknown
+                    slotStatusCounts.unknown++;
+                }
             }
         }
 
