@@ -477,18 +477,38 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
             }
         }
 
+        // Calculate parking lots and floors
+        const uniqueLots = new Set();
+        const uniqueFloors = new Set();
+        allSlots.forEach(slot => {
+            if (slot.floor?.parkingLot?.id) {
+                uniqueLots.add(slot.floor.parkingLot.id);
+            }
+            if (slot.floor?.id) {
+                uniqueFloors.add(slot.floor.id);
+            }
+        });
+
         // Calculate statistics
         const stats = {
+            totalParkingLots: uniqueLots.size,
+            totalFloors: uniqueFloors.size,
+            totalSlots: allSlots.length,
             totalNodes: nodes.length,
+            totalGateways: 0, // Would need separate query for gateways
+
             onlineNodes: nodes.filter(node => node.isOnline).length,
             offlineNodes: nodes.filter(node => !node.isOnline && node.isActive).length,
             inactiveNodes: nodes.filter(node => !node.isActive).length,
 
-            totalSlots: allSlots.length,
             availableSlots: slotStatusCounts.available,
             occupiedSlots: slotStatusCounts.occupied,
             reservedSlots: slotStatusCounts.reserved,
             unknownSlots: slotStatusCounts.unknown,
+
+            occupancyRate: allSlots.length > 0
+                ? Math.round((slotStatusCounts.occupied / allSlots.length) * 100)
+                : 0,
 
             averageBatteryLevel: nodes.reduce((sum, node) => sum + (node.batteryLevel || 0), 0) / nodes.length || 0,
             lowBatteryNodes: nodes.filter(node => (node.batteryLevel || 100) < 20).length,
