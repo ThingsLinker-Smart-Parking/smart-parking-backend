@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, BeforeInsert, BeforeUpdate, OneToMany, Generated } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, BeforeInsert, BeforeUpdate, OneToMany, Generated } from 'typeorm';
 import bcrypt from 'bcryptjs';
 import { Node } from './Node';
 import { ParkingLot } from './ParkingLot';
@@ -39,6 +39,31 @@ export class User {
     @Column({ default: true })
     isActive!: boolean;
 
+    // Business/Contact Information
+    @Column({ type: 'varchar', nullable: true, length: 15 })
+    phone!: string | null;
+
+    @Column({ type: 'varchar', nullable: true })
+    companyName!: string | null;
+
+    @Column({ type: 'varchar', nullable: true, length: 15 })
+    gstNumber!: string | null;
+
+    @Column({ type: 'text', nullable: true })
+    address!: string | null;
+
+    @Column({ type: 'varchar', nullable: true, length: 100 })
+    city!: string | null;
+
+    @Column({ type: 'varchar', nullable: true, length: 100 })
+    state!: string | null;
+
+    @Column({ type: 'varchar', nullable: true, length: 10 })
+    zipCode!: string | null;
+
+    @Column({ type: 'varchar', nullable: true, length: 100 })
+    country!: string | null;
+
     @OneToMany(() => ParkingLot, parkingLot => parkingLot.admin)
     parkingLots: ParkingLot[];
 
@@ -53,6 +78,9 @@ export class User {
 
     @CreateDateColumn()
     createdAt!: Date;
+
+    @UpdateDateColumn()
+    updatedAt!: Date;
 
     @BeforeInsert()
     async hashPassword() {
