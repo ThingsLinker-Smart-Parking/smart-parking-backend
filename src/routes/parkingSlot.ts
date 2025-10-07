@@ -12,12 +12,9 @@ import {
     getAllParkingSlots,
     quickAssignNode
 } from '../controllers/parkingSlotController';
-import { authenticateToken, requireRole } from '../middleware/auth';
+import { authenticateToken, optionallyAuthenticateToken, requireRole } from '../middleware/auth';
 
 const router = Router();
-
-// All routes require authentication and admin role
-router.use(authenticateToken, requireRole(['admin']));
 
 /**
  * @swagger
@@ -53,7 +50,7 @@ router.use(authenticateToken, requireRole(['admin']));
  *       403:
  *         description: Access denied
  */
-router.get('/', getAllParkingSlots);
+router.get('/', optionallyAuthenticateToken, getAllParkingSlots);
 
 /**
  * @swagger
@@ -98,7 +95,7 @@ router.get('/', getAllParkingSlots);
  *       404:
  *         description: Floor not found
  */
-router.get('/floor/:floorId', getParkingSlotsByFloor);
+router.get('/floor/:floorId', optionallyAuthenticateToken, getParkingSlotsByFloor);
 
 /**
  * @swagger
@@ -123,7 +120,7 @@ router.get('/floor/:floorId', getParkingSlotsByFloor);
  *       404:
  *         description: Parking slot not found
  */
-router.get('/:id', getParkingSlotById);
+router.get('/:id', optionallyAuthenticateToken, getParkingSlotById);
 
 /**
  * @swagger
@@ -165,7 +162,7 @@ router.get('/:id', getParkingSlotById);
  *       404:
  *         description: Floor not found
  */
-router.post('/floor/:floorId', createParkingSlot);
+router.post('/floor/:floorId', authenticateToken, requireRole(['admin']), createParkingSlot);
 
 /**
  * @swagger
@@ -214,7 +211,7 @@ router.post('/floor/:floorId', createParkingSlot);
  *       404:
  *         description: Floor not found
  */
-router.post('/floor/:floorId/bulk', bulkCreateParkingSlots);
+router.post('/floor/:floorId/bulk', authenticateToken, requireRole(['admin']), bulkCreateParkingSlots);
 
 /**
  * @swagger
@@ -249,7 +246,7 @@ router.post('/floor/:floorId/bulk', bulkCreateParkingSlots);
  *       404:
  *         description: Parking slot not found
  */
-router.put('/:id', updateParkingSlot);
+router.put('/:id', authenticateToken, requireRole(['admin']), updateParkingSlot);
 
 /**
  * @swagger
@@ -276,7 +273,7 @@ router.put('/:id', updateParkingSlot);
  *       404:
  *         description: Parking slot not found
  */
-router.delete('/:id', deleteParkingSlot);
+router.delete('/:id', authenticateToken, requireRole(['admin']), deleteParkingSlot);
 
 /**
  * @swagger
@@ -314,7 +311,7 @@ router.delete('/:id', deleteParkingSlot);
  *       404:
  *         description: Parking slot or node not found
  */
-router.post('/:id/assign-node', assignNodeToParkingSlot);
+router.post('/:id/assign-node', authenticateToken, requireRole(['admin']), assignNodeToParkingSlot);
 
 /**
  * @swagger
@@ -339,7 +336,7 @@ router.post('/:id/assign-node', assignNodeToParkingSlot);
  *       404:
  *         description: Parking slot not found
  */
-router.post('/:id/unassign-node', unassignNodeFromParkingSlot);
+router.post('/:id/unassign-node', authenticateToken, requireRole(['admin']), unassignNodeFromParkingSlot);
 
 /**
  * @swagger
@@ -370,7 +367,7 @@ router.post('/:id/unassign-node', unassignNodeFromParkingSlot);
  *       404:
  *         description: Parking slot not found
  */
-router.get('/:id/status', getParkingSlotStatus);
+router.get('/:id/status', optionallyAuthenticateToken, getParkingSlotStatus);
 
 /**
  * @swagger
@@ -457,6 +454,6 @@ router.get('/:id/status', getParkingSlotStatus);
  *       401:
  *         description: Unauthorized
  */
-router.post('/quick-assign', quickAssignNode);
+router.post('/quick-assign', authenticateToken, requireRole(['admin']), quickAssignNode);
 
 export default router;

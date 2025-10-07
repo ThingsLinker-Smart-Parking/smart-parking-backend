@@ -4,8 +4,6 @@ const express_1 = require("express");
 const floorController_1 = require("../controllers/floorController");
 const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
-// All routes require authentication and admin role
-router.use(auth_1.authenticateToken, (0, auth_1.requireRole)(['admin']));
 /**
  * @swagger
  * /api/floors:
@@ -40,7 +38,7 @@ router.use(auth_1.authenticateToken, (0, auth_1.requireRole)(['admin']));
  *       403:
  *         description: Access denied
  */
-router.get('/', floorController_1.getAllFloors);
+router.get('/', auth_1.optionallyAuthenticateToken, floorController_1.getAllFloors);
 /**
  * @swagger
  * components:
@@ -84,7 +82,7 @@ router.get('/', floorController_1.getAllFloors);
  *       404:
  *         description: Parking lot not found
  */
-router.get('/parking-lot/:parkingLotId', floorController_1.getFloorsByParkingLot);
+router.get('/parking-lot/:parkingLotId', auth_1.optionallyAuthenticateToken, floorController_1.getFloorsByParkingLot);
 /**
  * @swagger
  * /api/floors/{id}:
@@ -108,7 +106,7 @@ router.get('/parking-lot/:parkingLotId', floorController_1.getFloorsByParkingLot
  *       404:
  *         description: Floor not found
  */
-router.get('/:id', floorController_1.getFloorById);
+router.get('/:id', auth_1.optionallyAuthenticateToken, floorController_1.getFloorById);
 /**
  * @swagger
  * /api/floors/parking-lot/{parkingLotId}:
@@ -149,7 +147,7 @@ router.get('/:id', floorController_1.getFloorById);
  *       404:
  *         description: Parking lot not found
  */
-router.post('/parking-lot/:parkingLotId', floorController_1.createFloor);
+router.post('/parking-lot/:parkingLotId', auth_1.authenticateToken, (0, auth_1.requireRole)(['admin']), floorController_1.createFloor);
 /**
  * @swagger
  * /api/floors/{id}:
@@ -183,7 +181,7 @@ router.post('/parking-lot/:parkingLotId', floorController_1.createFloor);
  *       404:
  *         description: Floor not found
  */
-router.put('/:id', floorController_1.updateFloor);
+router.put('/:id', auth_1.authenticateToken, (0, auth_1.requireRole)(['admin']), floorController_1.updateFloor);
 /**
  * @swagger
  * /api/floors/{id}:
@@ -209,7 +207,7 @@ router.put('/:id', floorController_1.updateFloor);
  *       404:
  *         description: Floor not found
  */
-router.delete('/:id', floorController_1.deleteFloor);
+router.delete('/:id', auth_1.authenticateToken, (0, auth_1.requireRole)(['admin']), floorController_1.deleteFloor);
 /**
  * @swagger
  * /api/floors/{id}/statistics:
@@ -233,5 +231,5 @@ router.delete('/:id', floorController_1.deleteFloor);
  *       404:
  *         description: Floor not found
  */
-router.get('/:id/statistics', floorController_1.getFloorStatistics);
+router.get('/:id/statistics', auth_1.optionallyAuthenticateToken, floorController_1.getFloorStatistics);
 exports.default = router;

@@ -5,8 +5,6 @@ const parkingLotController_1 = require("../controllers/parkingLotController");
 const auth_1 = require("../middleware/auth");
 const subscriptionAuth_1 = require("../middleware/subscriptionAuth");
 const router = (0, express_1.Router)();
-// All routes require authentication and admin role
-router.use(auth_1.authenticateToken);
 /**
  * @swagger
  * components:
@@ -51,7 +49,7 @@ router.use(auth_1.authenticateToken);
  *                 count:
  *                   type: integer
  */
-router.get('/', subscriptionAuth_1.requireActiveSubscription, parkingLotController_1.getMyParkingLots);
+router.get('/', auth_1.optionallyAuthenticateToken, parkingLotController_1.getMyParkingLots);
 /**
  * @swagger
  * /api/parking-lots/{id}:
@@ -73,7 +71,7 @@ router.get('/', subscriptionAuth_1.requireActiveSubscription, parkingLotControll
  *       404:
  *         description: Parking lot not found
  */
-router.get('/:id', subscriptionAuth_1.requireActiveSubscription, parkingLotController_1.getParkingLotById);
+router.get('/:id', auth_1.optionallyAuthenticateToken, parkingLotController_1.getParkingLotById);
 /**
  * @swagger
  * /api/parking-lots:
@@ -104,7 +102,7 @@ router.get('/:id', subscriptionAuth_1.requireActiveSubscription, parkingLotContr
  *       400:
  *         description: Validation error
  */
-router.post('/', (0, auth_1.requireRole)(['admin']), subscriptionAuth_1.requireActiveSubscription, (0, subscriptionAuth_1.checkFeatureLimit)('parkingLots'), parkingLotController_1.createParkingLot);
+router.post('/', auth_1.authenticateToken, (0, auth_1.requireRole)(['admin']), subscriptionAuth_1.requireActiveSubscription, (0, subscriptionAuth_1.checkFeatureLimit)('parkingLots'), parkingLotController_1.createParkingLot);
 /**
  * @swagger
  * /api/parking-lots/{id}:
@@ -136,7 +134,7 @@ router.post('/', (0, auth_1.requireRole)(['admin']), subscriptionAuth_1.requireA
  *       404:
  *         description: Parking lot not found
  */
-router.put('/:id', (0, auth_1.requireRole)(['admin']), subscriptionAuth_1.requireActiveSubscription, parkingLotController_1.updateParkingLot);
+router.put('/:id', auth_1.authenticateToken, (0, auth_1.requireRole)(['admin']), subscriptionAuth_1.requireActiveSubscription, parkingLotController_1.updateParkingLot);
 /**
  * @swagger
  * /api/parking-lots/{id}:
@@ -160,7 +158,7 @@ router.put('/:id', (0, auth_1.requireRole)(['admin']), subscriptionAuth_1.requir
  *       404:
  *         description: Parking lot not found
  */
-router.delete('/:id', (0, auth_1.requireRole)(['admin']), subscriptionAuth_1.requireActiveSubscription, parkingLotController_1.deleteParkingLot);
+router.delete('/:id', auth_1.authenticateToken, (0, auth_1.requireRole)(['admin']), subscriptionAuth_1.requireActiveSubscription, parkingLotController_1.deleteParkingLot);
 /**
  * @swagger
  * /api/parking-lots/{id}/assign-gateway:
@@ -290,7 +288,7 @@ router.delete('/:id', (0, auth_1.requireRole)(['admin']), subscriptionAuth_1.req
  *                   type: string
  *                   example: "Failed to assign gateway to parking lot"
  */
-router.post('/:id/assign-gateway', (0, auth_1.requireRole)(['admin']), subscriptionAuth_1.requireActiveSubscription, parkingLotController_1.assignGatewayToParkingLot);
+router.post('/:id/assign-gateway', auth_1.authenticateToken, (0, auth_1.requireRole)(['admin']), subscriptionAuth_1.requireActiveSubscription, parkingLotController_1.assignGatewayToParkingLot);
 /**
  * @swagger
  * /api/parking-lots/{id}/unassign-gateway/{gatewayId}:
@@ -318,7 +316,7 @@ router.post('/:id/assign-gateway', (0, auth_1.requireRole)(['admin']), subscript
  *       404:
  *         description: Parking lot or gateway not found
  */
-router.post('/:id/unassign-gateway/:gatewayId', (0, auth_1.requireRole)(['admin']), subscriptionAuth_1.requireActiveSubscription, parkingLotController_1.unassignGatewayFromParkingLot);
+router.post('/:id/unassign-gateway/:gatewayId', auth_1.authenticateToken, (0, auth_1.requireRole)(['admin']), subscriptionAuth_1.requireActiveSubscription, parkingLotController_1.unassignGatewayFromParkingLot);
 /**
  * @swagger
  * /api/parking-lots/{id}/gateways:
@@ -454,5 +452,5 @@ router.post('/:id/unassign-gateway/:gatewayId', (0, auth_1.requireRole)(['admin'
  *                   type: string
  *                   example: "Failed to retrieve gateways for parking lot"
  */
-router.get('/:id/gateways', (0, auth_1.requireRole)(['admin']), subscriptionAuth_1.requireActiveSubscription, parkingLotController_1.getGatewaysByParkingLotId);
+router.get('/:id/gateways', auth_1.authenticateToken, (0, auth_1.requireRole)(['admin']), subscriptionAuth_1.requireActiveSubscription, parkingLotController_1.getGatewaysByParkingLotId);
 exports.default = router;

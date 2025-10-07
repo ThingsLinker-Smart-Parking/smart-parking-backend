@@ -8,12 +8,9 @@ import {
     getFloorStatistics,
     getAllFloors
 } from '../controllers/floorController';
-import { authenticateToken, requireRole } from '../middleware/auth';
+import { authenticateToken, optionallyAuthenticateToken, requireRole } from '../middleware/auth';
 
 const router = Router();
-
-// All routes require authentication and admin role
-router.use(authenticateToken, requireRole(['admin']));
 
 /**
  * @swagger
@@ -49,7 +46,7 @@ router.use(authenticateToken, requireRole(['admin']));
  *       403:
  *         description: Access denied
  */
-router.get('/', getAllFloors);
+router.get('/', optionallyAuthenticateToken, getAllFloors);
 
 /**
  * @swagger
@@ -95,7 +92,7 @@ router.get('/', getAllFloors);
  *       404:
  *         description: Parking lot not found
  */
-router.get('/parking-lot/:parkingLotId', getFloorsByParkingLot);
+router.get('/parking-lot/:parkingLotId', optionallyAuthenticateToken, getFloorsByParkingLot);
 
 /**
  * @swagger
@@ -120,7 +117,7 @@ router.get('/parking-lot/:parkingLotId', getFloorsByParkingLot);
  *       404:
  *         description: Floor not found
  */
-router.get('/:id', getFloorById);
+router.get('/:id', optionallyAuthenticateToken, getFloorById);
 
 /**
  * @swagger
@@ -162,7 +159,7 @@ router.get('/:id', getFloorById);
  *       404:
  *         description: Parking lot not found
  */
-router.post('/parking-lot/:parkingLotId', createFloor);
+router.post('/parking-lot/:parkingLotId', authenticateToken, requireRole(['admin']), createFloor);
 
 /**
  * @swagger
@@ -197,7 +194,7 @@ router.post('/parking-lot/:parkingLotId', createFloor);
  *       404:
  *         description: Floor not found
  */
-router.put('/:id', updateFloor);
+router.put('/:id', authenticateToken, requireRole(['admin']), updateFloor);
 
 /**
  * @swagger
@@ -224,7 +221,7 @@ router.put('/:id', updateFloor);
  *       404:
  *         description: Floor not found
  */
-router.delete('/:id', deleteFloor);
+router.delete('/:id', authenticateToken, requireRole(['admin']), deleteFloor);
 
 /**
  * @swagger
@@ -249,6 +246,6 @@ router.delete('/:id', deleteFloor);
  *       404:
  *         description: Floor not found
  */
-router.get('/:id/statistics', getFloorStatistics);
+router.get('/:id/statistics', optionallyAuthenticateToken, getFloorStatistics);
 
 export default router;

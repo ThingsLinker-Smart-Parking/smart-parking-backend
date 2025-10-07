@@ -22,27 +22,41 @@ export const getFloorsByParkingLot = async (req: AuthRequest, res: Response): Pr
 
         const floorRepository = AppDataSource.getRepository(Floor);
         const parkingLotRepository = AppDataSource.getRepository(ParkingLot);
-        
-        // Verify parking lot ownership
+
         const parkingLot = await parkingLotRepository.findOne({
-            where: { 
-                id: parkingLotId, 
-                admin: { id: req.user!.id } 
-            }
+            where: { id: parkingLotId },
+            relations: ['admin']
         });
-        
+
         if (!parkingLot) {
             return res.status(404).json({
                 success: false,
-                message: 'Parking lot not found or access denied'
+                message: 'Parking lot not found'
             });
         }
-        
+
+        if (req.user && (req.user.role === 'admin' || req.user.role === 'super_admin')) {
+            if (!parkingLot.admin || parkingLot.admin.id !== req.user.id) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Parking lot not found or access denied'
+                });
+            }
+        }
+
         const floors = await floorRepository.find({
             where: { parkingLot: { id: parkingLot.id } },
-            relations: ['parkingSlots'],
+            relations: ['parkingSlots', 'parkingLot', 'parkingLot.admin'],
             order: { level: 'ASC' }
         });
+
+        if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'super_admin')) {
+            floors.forEach(floor => {
+                if (floor.parkingLot) {
+                    (floor.parkingLot as any).admin = undefined;
+                }
+            });
+        }
         
         return res.json({
             success: true,
@@ -75,24 +89,44 @@ export const getFloorById = async (req: AuthRequest, res: Response): Promise<Res
 
         const floorRepository = AppDataSource.getRepository(Floor);
         const floor = await floorRepository.findOne({
-            where: { 
-                id: id,
-                parkingLot: { admin: { id: req.user!.id } }
-            },
-            relations: ['parkingLot', 'parkingSlots']
+            where: { id },
+            relations: ['parkingLot', 'parkingLot.admin', 'parkingSlots']
         });
-        
+
         if (!floor) {
             return res.status(404).json({
                 success: false,
-                message: 'Floor not found or access denied'
+                message: 'Floor not found'
             });
         }
-        
+
+        if (req.user && (req.user.role === 'admin' || req.user.role === 'super_admin')) {
+            if (!floor.parkingLot?.admin || floor.parkingLot.admin.id !== req.user.id) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Floor not found or access denied'
+                });
+            }
+        }
+
+        const isAdminUser = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
+
+        const responseData = isAdminUser
+            ? floor
+            : {
+                ...floor,
+                parkingLot: floor.parkingLot
+                    ? {
+                        ...floor.parkingLot,
+                        admin: undefined
+                    }
+                    : null
+            };
+
         return res.json({
             success: true,
             message: 'Floor retrieved successfully',
-            data: floor
+            data: responseData
         });
     } catch (error) {
         logger.error('Get floor by ID error:', error);
@@ -376,16 +410,27 @@ export const getAllFloors = async (req: AuthRequest, res: Response): Promise<Res
     try {
         const floorRepository = AppDataSource.getRepository(Floor);
 
+        const isAdminUser = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
+
         const floors = await floorRepository.find({
-            where: {
-                parkingLot: { admin: { id: req.user!.id } }
-            },
-            relations: ['parkingLot', 'parkingSlots'],
+            where: isAdminUser
+                ? { parkingLot: { admin: { id: req.user!.id } } }
+                : {},
+            relations: ['parkingLot', 'parkingSlots', 'parkingLot.admin'],
             order: {
                 parkingLot: { name: 'ASC' },
                 level: 'ASC'
             }
         });
+
+        if (!isAdminUser) {
+            floors.forEach(floor => {
+                if (floor.parkingLot) {
+                    // Hide admin details for public consumers
+                    (floor.parkingLot as any).admin = undefined;
+                }
+            });
+        }
 
         return res.json({
             success: true,

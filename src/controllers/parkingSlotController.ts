@@ -24,22 +24,28 @@ export const getParkingSlotsByFloor = async (req: AuthRequest, res: Response): P
 
         const parkingSlotRepository = AppDataSource.getRepository(ParkingSlot);
         const floorRepository = AppDataSource.getRepository(Floor);
-        
-        // Verify floor ownership
+
         const floor = await floorRepository.findOne({
-            where: { 
-                id: floorId,
-                parkingLot: { admin: { id: req.user!.id } }
-            }
+            where: { id: floorId },
+            relations: ['parkingLot', 'parkingLot.admin']
         });
-        
+
         if (!floor) {
             return res.status(404).json({
                 success: false,
-                message: 'Floor not found or access denied'
+                message: 'Floor not found'
             });
         }
-        
+
+        if (req.user && (req.user.role === 'admin' || req.user.role === 'super_admin')) {
+            if (!floor.parkingLot?.admin || floor.parkingLot.admin.id !== req.user.id) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Floor not found or access denied'
+                });
+            }
+        }
+
         const parkingSlots = await parkingSlotRepository.find({
             where: { floor: { id: floor.id } },
             relations: ['statusLogs'],
@@ -77,20 +83,26 @@ export const getParkingSlotById = async (req: AuthRequest, res: Response): Promi
 
         const parkingSlotRepository = AppDataSource.getRepository(ParkingSlot);
         const parkingSlot = await parkingSlotRepository.findOne({
-            where: { 
-                id: id,
-                floor: { parkingLot: { admin: { id: req.user!.id } } }
-            },
-            relations: ['floor', 'floor.parkingLot', 'statusLogs']
+            where: { id },
+            relations: ['floor', 'floor.parkingLot', 'floor.parkingLot.admin', 'statusLogs']
         });
-        
+
         if (!parkingSlot) {
             return res.status(404).json({
                 success: false,
-                message: 'Parking slot not found or access denied'
+                message: 'Parking slot not found'
             });
         }
-        
+
+        if (req.user && (req.user.role === 'admin' || req.user.role === 'super_admin')) {
+            if (!parkingSlot.floor?.parkingLot?.admin || parkingSlot.floor.parkingLot.admin.id !== req.user.id) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Parking slot not found or access denied'
+                });
+            }
+        }
+
         return res.json({
             success: true,
             message: 'Parking slot retrieved successfully',
@@ -491,25 +503,29 @@ export const getParkingSlotStatus = async (req: AuthRequest, res: Response): Pro
         const nodeRepository = AppDataSource.getRepository(Node);
         
         const parkingSlot = await parkingSlotRepository.findOne({
-            where: { 
-                id: id,
-                floor: { parkingLot: { admin: { id: req.user!.id } } }
-            },
-            relations: ['floor', 'floor.parkingLot']
+            where: { id },
+            relations: ['floor', 'floor.parkingLot', 'floor.parkingLot.admin']
         });
-        
+
         if (!parkingSlot) {
             return res.status(404).json({
                 success: false,
-                message: 'Parking slot not found or access denied'
+                message: 'Parking slot not found'
             });
         }
-        
-        // Get the associated node
+
+        if (req.user && (req.user.role === 'admin' || req.user.role === 'super_admin')) {
+            if (!parkingSlot.floor?.parkingLot?.admin || parkingSlot.floor.parkingLot.admin.id !== req.user.id) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Parking slot not found or access denied'
+                });
+            }
+        }
+
         const node = await nodeRepository.findOne({
             where: {
-                parkingSlot: { id: parkingSlot.id },
-                admin: { id: req.user!.id }
+                parkingSlot: { id: parkingSlot.id }
             }
         });
 
@@ -569,7 +585,7 @@ export const getParkingSlotStatus = async (req: AuthRequest, res: Response): Pro
 
         logger.info('Parking slot status retrieved', {
             slotId: parkingSlot.id,
-            adminId: req.user!.id,
+            adminId: req.user?.id ?? 'public',
             status: node.slotStatus
         });
         
@@ -812,14 +828,17 @@ export const quickAssignNode = async (req: AuthRequest, res: Response): Promise<
 export const getAllParkingSlots = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
         const parkingSlotRepository = AppDataSource.getRepository(ParkingSlot);
+        const isAdminUser = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
 
         const parkingSlots = await parkingSlotRepository.find({
-            where: {
-                floor: {
-                    parkingLot: { admin: { id: req.user!.id } }
+            where: isAdminUser
+                ? {
+                    floor: {
+                        parkingLot: { admin: { id: req.user!.id } }
+                    }
                 }
-            },
-            relations: ['floor', 'floor.parkingLot'],
+                : {},
+            relations: ['floor', 'floor.parkingLot', 'floor.parkingLot.admin'],
             order: {
                 floor: {
                     parkingLot: { name: 'ASC' },
@@ -828,6 +847,14 @@ export const getAllParkingSlots = async (req: AuthRequest, res: Response): Promi
                 name: 'ASC'
             }
         });
+
+        if (!isAdminUser) {
+            parkingSlots.forEach(slot => {
+                if (slot.floor?.parkingLot) {
+                    (slot.floor.parkingLot as any).admin = undefined;
+                }
+            });
+        }
 
         return res.json({
             success: true,

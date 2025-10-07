@@ -12,8 +12,8 @@ const getMyParkingLots = async (req, res) => {
     try {
         const parkingLotRepository = data_source_1.AppDataSource.getRepository(ParkingLot_1.ParkingLot);
         let parkingLots;
-        // Admins and super_admins see their own parking lots, users see all parking lots
-        if (req.user.role === 'admin' || req.user.role === 'super_admin') {
+        const isAdminUser = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
+        if (isAdminUser) {
             parkingLots = await parkingLotRepository.find({
                 where: { admin: { id: req.user.id } },
                 relations: ['floors', 'floors.parkingSlots', 'gateways']
@@ -22,8 +22,11 @@ const getMyParkingLots = async (req, res) => {
         else {
             // Users can view all parking lots to find parking spots
             parkingLots = await parkingLotRepository.find({
-                relations: ['floors', 'floors.parkingSlots'],
+                relations: ['floors', 'floors.parkingSlots', 'admin'],
                 order: { name: 'ASC' }
+            });
+            parkingLots.forEach(lot => {
+                lot.admin = undefined;
             });
         }
         return res.json({
@@ -51,24 +54,35 @@ exports.getParkingLotById = (0, errorHandler_1.catchAsync)(async (req, res) => {
         throw new errorHandler_1.ValidationError(idValidation.error);
     }
     const parkingLotRepository = data_source_1.AppDataSource.getRepository(ParkingLot_1.ParkingLot);
-    // Log business event
-    loggerService_1.logger.business('Parking lot retrieval requested', 'ParkingLot', id, req.user.id);
+    const isAdminUser = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
+    if (isAdminUser) {
+        loggerService_1.logger.business('Parking lot retrieval requested', 'ParkingLot', id, req.user.id);
+    }
     const parkingLot = await parkingLotRepository.findOne({
-        where: {
-            id: id,
-            admin: { id: req.user.id }
-        },
-        relations: ['floors', 'floors.parkingSlots', 'gateways']
+        where: isAdminUser
+            ? {
+                id,
+                admin: { id: req.user.id }
+            }
+            : { id },
+        relations: ['floors', 'floors.parkingSlots', 'gateways', 'admin']
     });
     if (!parkingLot) {
-        loggerService_1.logger.warn('Parking lot access denied', {
-            parkingLotId: id,
-            userId: req.user.id,
-            reason: 'Not found or access denied'
-        });
+        if (isAdminUser) {
+            loggerService_1.logger.warn('Parking lot access denied', {
+                parkingLotId: id,
+                userId: req.user.id,
+                reason: 'Not found or access denied'
+            });
+        }
         throw new errorHandler_1.NotFoundError('Parking lot');
     }
-    loggerService_1.logger.business('Parking lot retrieved successfully', 'ParkingLot', id, req.user.id);
+    if (!isAdminUser) {
+        parkingLot.admin = undefined;
+    }
+    else {
+        loggerService_1.logger.business('Parking lot retrieved successfully', 'ParkingLot', id, req.user.id);
+    }
     return res.json({
         success: true,
         message: 'Parking lot retrieved successfully',

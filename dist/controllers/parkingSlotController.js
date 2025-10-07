@@ -22,18 +22,23 @@ const getParkingSlotsByFloor = async (req, res) => {
         }
         const parkingSlotRepository = data_source_1.AppDataSource.getRepository(ParkingSlot_1.ParkingSlot);
         const floorRepository = data_source_1.AppDataSource.getRepository(Floor_1.Floor);
-        // Verify floor ownership
         const floor = await floorRepository.findOne({
-            where: {
-                id: floorId,
-                parkingLot: { admin: { id: req.user.id } }
-            }
+            where: { id: floorId },
+            relations: ['parkingLot', 'parkingLot.admin']
         });
         if (!floor) {
             return res.status(404).json({
                 success: false,
-                message: 'Floor not found or access denied'
+                message: 'Floor not found'
             });
+        }
+        if (req.user && (req.user.role === 'admin' || req.user.role === 'super_admin')) {
+            if (!floor.parkingLot?.admin || floor.parkingLot.admin.id !== req.user.id) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Floor not found or access denied'
+                });
+            }
         }
         const parkingSlots = await parkingSlotRepository.find({
             where: { floor: { id: floor.id } },
@@ -70,17 +75,22 @@ const getParkingSlotById = async (req, res) => {
         }
         const parkingSlotRepository = data_source_1.AppDataSource.getRepository(ParkingSlot_1.ParkingSlot);
         const parkingSlot = await parkingSlotRepository.findOne({
-            where: {
-                id: id,
-                floor: { parkingLot: { admin: { id: req.user.id } } }
-            },
-            relations: ['floor', 'floor.parkingLot', 'statusLogs']
+            where: { id },
+            relations: ['floor', 'floor.parkingLot', 'floor.parkingLot.admin', 'statusLogs']
         });
         if (!parkingSlot) {
             return res.status(404).json({
                 success: false,
-                message: 'Parking slot not found or access denied'
+                message: 'Parking slot not found'
             });
+        }
+        if (req.user && (req.user.role === 'admin' || req.user.role === 'super_admin')) {
+            if (!parkingSlot.floor?.parkingLot?.admin || parkingSlot.floor.parkingLot.admin.id !== req.user.id) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Parking slot not found or access denied'
+                });
+            }
         }
         return res.json({
             success: true,
@@ -440,23 +450,26 @@ const getParkingSlotStatus = async (req, res) => {
         const parkingSlotRepository = data_source_1.AppDataSource.getRepository(ParkingSlot_1.ParkingSlot);
         const nodeRepository = data_source_1.AppDataSource.getRepository(Node_1.Node);
         const parkingSlot = await parkingSlotRepository.findOne({
-            where: {
-                id: id,
-                floor: { parkingLot: { admin: { id: req.user.id } } }
-            },
-            relations: ['floor', 'floor.parkingLot']
+            where: { id },
+            relations: ['floor', 'floor.parkingLot', 'floor.parkingLot.admin']
         });
         if (!parkingSlot) {
             return res.status(404).json({
                 success: false,
-                message: 'Parking slot not found or access denied'
+                message: 'Parking slot not found'
             });
         }
-        // Get the associated node
+        if (req.user && (req.user.role === 'admin' || req.user.role === 'super_admin')) {
+            if (!parkingSlot.floor?.parkingLot?.admin || parkingSlot.floor.parkingLot.admin.id !== req.user.id) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Parking slot not found or access denied'
+                });
+            }
+        }
         const node = await nodeRepository.findOne({
             where: {
-                parkingSlot: { id: parkingSlot.id },
-                admin: { id: req.user.id }
+                parkingSlot: { id: parkingSlot.id }
             }
         });
         if (!node) {
@@ -510,7 +523,7 @@ const getParkingSlotStatus = async (req, res) => {
         };
         loggerService_1.logger.info('Parking slot status retrieved', {
             slotId: parkingSlot.id,
-            adminId: req.user.id,
+            adminId: req.user?.id ?? 'public',
             status: node.slotStatus
         });
         return res.json({
@@ -729,13 +742,16 @@ exports.quickAssignNode = quickAssignNode;
 const getAllParkingSlots = async (req, res) => {
     try {
         const parkingSlotRepository = data_source_1.AppDataSource.getRepository(ParkingSlot_1.ParkingSlot);
+        const isAdminUser = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
         const parkingSlots = await parkingSlotRepository.find({
-            where: {
-                floor: {
-                    parkingLot: { admin: { id: req.user.id } }
+            where: isAdminUser
+                ? {
+                    floor: {
+                        parkingLot: { admin: { id: req.user.id } }
+                    }
                 }
-            },
-            relations: ['floor', 'floor.parkingLot'],
+                : {},
+            relations: ['floor', 'floor.parkingLot', 'floor.parkingLot.admin'],
             order: {
                 floor: {
                     parkingLot: { name: 'ASC' },
@@ -744,6 +760,13 @@ const getAllParkingSlots = async (req, res) => {
                 name: 'ASC'
             }
         });
+        if (!isAdminUser) {
+            parkingSlots.forEach(slot => {
+                if (slot.floor?.parkingLot) {
+                    slot.floor.parkingLot.admin = undefined;
+                }
+            });
+        }
         return res.json({
             success: true,
             message: 'All parking slots retrieved successfully',
