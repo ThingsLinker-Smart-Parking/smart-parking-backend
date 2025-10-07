@@ -156,6 +156,28 @@ export const userSchemas = {
         'string.max': 'Last name cannot exceed 50 characters',
         'string.pattern.base': 'Last name can only contain letters, spaces, hyphens, and dots'
       }),
+    phone: commonSchemas.phone,
+    companyName: Joi.string().max(150).optional().messages({
+      'string.max': 'Company name cannot exceed 150 characters'
+    }),
+    gstNumber: Joi.string().max(15).optional().messages({
+      'string.max': 'GST number cannot exceed 15 characters'
+    }),
+    address: Joi.string().max(500).optional().messages({
+      'string.max': 'Address cannot exceed 500 characters'
+    }),
+    city: Joi.string().max(100).optional().messages({
+      'string.max': 'City cannot exceed 100 characters'
+    }),
+    state: Joi.string().max(100).optional().messages({
+      'string.max': 'State cannot exceed 100 characters'
+    }),
+    zipCode: Joi.string().max(10).optional().messages({
+      'string.max': 'ZIP code cannot exceed 10 characters'
+    }),
+    country: Joi.string().max(100).optional().messages({
+      'string.max': 'Country cannot exceed 100 characters'
+    }),
     currentPassword: Joi.string().when('newPassword', {
       is: Joi.exist(),
       then: Joi.required(),

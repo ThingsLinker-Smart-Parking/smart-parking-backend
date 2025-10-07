@@ -2,7 +2,7 @@ import app from './app';
 import { logger } from './services/loggerService';
 import { handleUncaughtException, handleUnhandledRejection } from './middleware/errorHandler';
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 const packageJson = require('../package.json');
 
 // Graceful shutdown handling

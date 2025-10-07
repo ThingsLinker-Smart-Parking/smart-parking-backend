@@ -147,6 +147,28 @@ exports.userSchemas = {
             'string.max': 'Last name cannot exceed 50 characters',
             'string.pattern.base': 'Last name can only contain letters, spaces, hyphens, and dots'
         }),
+        phone: exports.commonSchemas.phone,
+        companyName: joi_1.default.string().max(150).optional().messages({
+            'string.max': 'Company name cannot exceed 150 characters'
+        }),
+        gstNumber: joi_1.default.string().max(15).optional().messages({
+            'string.max': 'GST number cannot exceed 15 characters'
+        }),
+        address: joi_1.default.string().max(500).optional().messages({
+            'string.max': 'Address cannot exceed 500 characters'
+        }),
+        city: joi_1.default.string().max(100).optional().messages({
+            'string.max': 'City cannot exceed 100 characters'
+        }),
+        state: joi_1.default.string().max(100).optional().messages({
+            'string.max': 'State cannot exceed 100 characters'
+        }),
+        zipCode: joi_1.default.string().max(10).optional().messages({
+            'string.max': 'ZIP code cannot exceed 10 characters'
+        }),
+        country: joi_1.default.string().max(100).optional().messages({
+            'string.max': 'Country cannot exceed 100 characters'
+        }),
         currentPassword: joi_1.default.string().when('newPassword', {
             is: joi_1.default.exist(),
             then: joi_1.default.required(),

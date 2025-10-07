@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const app_1 = __importDefault(require("./app"));
 const loggerService_1 = require("./services/loggerService");
 const errorHandler_1 = require("./middleware/errorHandler");
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 const packageJson = require('../package.json');
 // Graceful shutdown handling
 const gracefulShutdown = (signal) => {

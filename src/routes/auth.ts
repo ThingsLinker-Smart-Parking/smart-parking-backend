@@ -8,6 +8,7 @@ import {
     resendOtp,
     getOtpConfig,
     getUserProfile,
+    updateUserProfile,
     refreshToken
 } from '../controllers/authController';
 import { authenticateToken, requireRole } from '../middleware/auth';
@@ -366,6 +367,87 @@ router.get('/otp-config', authenticateToken, requireRole(['admin', 'super_admin'
  *         description: Internal server error
  */
 router.get('/profile', authenticateToken, getUserProfile);
+
+/**
+ * @swagger
+ * /api/auth/profile:
+ *   put:
+ *     summary: Update user profile details
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *                 example: "Admin"
+ *               lastName:
+ *                 type: string
+ *                 example: "User"
+ *               phone:
+ *                 type: string
+ *                 example: "+1 555 123 4567"
+ *               companyName:
+ *                 type: string
+ *                 example: "Smart Parking Inc."
+ *               gstNumber:
+ *                 type: string
+ *                 example: "27AAACI1126H1Z2"
+ *               address:
+ *                 type: string
+ *                 example: "221B Baker Street"
+ *               city:
+ *                 type: string
+ *                 example: "London"
+ *               state:
+ *                 type: string
+ *                 example: "Greater London"
+ *               zipCode:
+ *                 type: string
+ *                 example: "NW1 6XE"
+ *               country:
+ *                 type: string
+ *                 example: "United Kingdom"
+ *               currentPassword:
+ *                 type: string
+ *                 example: "Admin123!"
+ *               newPassword:
+ *                 type: string
+ *                 example: "NewPassword123!"
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Profile updated successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *                     subscription:
+ *                       type: object
+ *       400:
+ *         description: Validation failure or incorrect current password
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.put('/profile', authenticateToken, sanitize(), validateBody(userSchemas.updateProfile), updateUserProfile);
 
 /**
  * @swagger

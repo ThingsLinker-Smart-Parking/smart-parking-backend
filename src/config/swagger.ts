@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Remove the package.json import and use environment variable or hardcode version
-const localPort = process.env.PORT || '3000';
+const localPort = process.env.PORT || '3001';
 
 const swaggerOptions: Options = {
   definition: {

@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 // Remove the package.json import and use environment variable or hardcode version
-const localPort = process.env.PORT || '3000';
+const localPort = process.env.PORT || '3001';
 const swaggerOptions = {
     definition: {
         openapi: '3.0.0',

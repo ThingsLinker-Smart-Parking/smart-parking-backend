@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.refreshToken = exports.getUserProfile = exports.getOtpConfig = exports.resendOtp = exports.resetPassword = exports.forgotPassword = exports.verifyOtp = exports.login = exports.signup = void 0;
+exports.refreshToken = exports.updateUserProfile = exports.getUserProfile = exports.getOtpConfig = exports.resendOtp = exports.resetPassword = exports.forgotPassword = exports.verifyOtp = exports.login = exports.signup = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const data_source_1 = require("../data-source");
 const User_1 = require("../models/User");
@@ -462,6 +462,74 @@ const getUserProfile = async (req, res) => {
     }
 };
 exports.getUserProfile = getUserProfile;
+// Update user profile details and optionally password
+const updateUserProfile = async (req, res) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+        }
+        const userRepository = data_source_1.AppDataSource.getRepository(User_1.User);
+        const user = await userRepository.findOne({ where: { id: req.user.id } });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+        const { firstName, lastName, phone, companyName, gstNumber, address, city, state, zipCode, country, currentPassword, newPassword } = req.body;
+        if (newPassword) {
+            const passwordValid = await user.validatePassword(currentPassword);
+            if (!passwordValid) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Current password is incorrect',
+                    code: 'INVALID_CURRENT_PASSWORD'
+                });
+            }
+            user.passwordHash = newPassword;
+        }
+        const fieldUpdates = {
+            firstName,
+            lastName,
+            phone,
+            companyName,
+            gstNumber,
+            address,
+            city,
+            state,
+            zipCode,
+            country
+        };
+        for (const [key, value] of Object.entries(fieldUpdates)) {
+            if (typeof value !== 'undefined') {
+                user[key] = value === '' ? null : value;
+            }
+        }
+        const updatedUser = await userRepository.save(user);
+        req.user = updatedUser;
+        const subscriptionStatus = await (0, subscriptionAuth_1.getSubscriptionStatus)(updatedUser.id);
+        const { passwordHash, otp, otpExpiry, ...userProfile } = updatedUser;
+        return res.json({
+            success: true,
+            message: 'Profile updated successfully',
+            data: {
+                user: userProfile,
+                subscription: subscriptionStatus
+            }
+        });
+    }
+    catch (error) {
+        loggerService_1.logger.error('Update user profile error', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+};
+exports.updateUserProfile = updateUserProfile;
 // Refresh JWT token
 const refreshToken = async (req, res) => {
     try {

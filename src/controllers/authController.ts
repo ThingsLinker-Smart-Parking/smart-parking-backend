@@ -519,6 +519,97 @@ export const getUserProfile = async (req: AuthRequest, res: Response): Promise<R
     }
 };
 
+// Update user profile details and optionally password
+export const updateUserProfile = async (req: AuthRequest, res: Response): Promise<Response> => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
+        }
+
+        const userRepository = AppDataSource.getRepository(User);
+        const user = await userRepository.findOne({ where: { id: req.user.id } });
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        const {
+            firstName,
+            lastName,
+            phone,
+            companyName,
+            gstNumber,
+            address,
+            city,
+            state,
+            zipCode,
+            country,
+            currentPassword,
+            newPassword
+        } = req.body;
+
+        if (newPassword) {
+            const passwordValid = await user.validatePassword(currentPassword);
+
+            if (!passwordValid) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Current password is incorrect',
+                    code: 'INVALID_CURRENT_PASSWORD'
+                });
+            }
+
+            user.passwordHash = newPassword;
+        }
+
+        const fieldUpdates = {
+            firstName,
+            lastName,
+            phone,
+            companyName,
+            gstNumber,
+            address,
+            city,
+            state,
+            zipCode,
+            country
+        } as const;
+
+        for (const [key, value] of Object.entries(fieldUpdates)) {
+            if (typeof value !== 'undefined') {
+                (user as any)[key] = value === '' ? null : value;
+            }
+        }
+
+        const updatedUser = await userRepository.save(user);
+        req.user = updatedUser;
+
+        const subscriptionStatus = await getSubscriptionStatus(updatedUser.id);
+        const { passwordHash, otp, otpExpiry, ...userProfile } = updatedUser;
+
+        return res.json({
+            success: true,
+            message: 'Profile updated successfully',
+            data: {
+                user: userProfile,
+                subscription: subscriptionStatus
+            }
+        });
+    } catch (error) {
+        logger.error('Update user profile error', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+};
+
 // Refresh JWT token
 export const refreshToken = async (req: AuthRequest, res: Response): Promise<Response> => {
     try {
