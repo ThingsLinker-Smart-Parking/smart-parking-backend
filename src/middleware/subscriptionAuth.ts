@@ -249,7 +249,44 @@ export const getSubscriptionStatus = async (userId: string) => {
     (activeSubscription.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  const plan = activeSubscription.plan;
+  const planEntity = activeSubscription.plan ?? null;
+
+  const plan = planEntity
+    ? {
+        id: planEntity.id,
+        name: planEntity.name,
+        description: planEntity.description ?? undefined
+      }
+    : undefined;
+
+  const limits = {
+    maxGateways:
+      planEntity?.maxGateways ??
+      (typeof activeSubscription.gatewayLimit === 'number'
+        ? activeSubscription.gatewayLimit
+        : Number(activeSubscription.gatewayLimit || 0)),
+    maxParkingLots:
+      planEntity?.maxParkingLots ??
+      (typeof activeSubscription.parkingLotLimit === 'number'
+        ? activeSubscription.parkingLotLimit
+        : Number(activeSubscription.parkingLotLimit || 0)),
+    maxFloors:
+      planEntity?.maxFloors ??
+      (typeof activeSubscription.floorLimit === 'number'
+        ? activeSubscription.floorLimit
+        : Number(activeSubscription.floorLimit || 0)),
+    maxParkingSlots:
+      planEntity?.maxParkingSlots ??
+      (typeof activeSubscription.parkingSlotLimit === 'number'
+        ? activeSubscription.parkingSlotLimit
+        : Number(activeSubscription.parkingSlotLimit || 0)),
+    maxUsers:
+      planEntity?.maxUsers ??
+      ((typeof activeSubscription.userLimit === 'number'
+        ? activeSubscription.userLimit
+        : Number(activeSubscription.userLimit || 0)) || undefined),
+    features: planEntity?.features ?? undefined
+  };
 
   return {
     hasActiveSubscription: !isExpired,
@@ -260,28 +297,12 @@ export const getSubscriptionStatus = async (userId: string) => {
       startDate: activeSubscription.startDate,
       endDate: activeSubscription.endDate,
       billingCycle: activeSubscription.billingCycle,
-      amount: Number(activeSubscription.amount),
+      amount: Number(activeSubscription.amount || 0),
       autoRenew: activeSubscription.autoRenew,
       daysRemaining: isExpired ? 0 : daysRemaining,
       nextBillingDate: activeSubscription.nextBillingDate,
-      plan: plan
-        ? {
-            id: plan.id,
-            name: plan.name,
-            description: plan.description,
-            currency: plan.currency
-          }
-        : undefined,
-      limits: plan
-        ? {
-            maxGateways: plan.maxGateways,
-            maxParkingLots: plan.maxParkingLots,
-            maxFloors: plan.maxFloors,
-            maxParkingSlots: plan.maxParkingSlots,
-            maxUsers: plan.maxUsers,
-            features: plan.features
-          }
-        : undefined
+      plan,
+      limits
     }
   };
 };
