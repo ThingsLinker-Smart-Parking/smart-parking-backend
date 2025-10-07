@@ -249,23 +249,39 @@ export const getSubscriptionStatus = async (userId: string) => {
     (activeSubscription.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
   );
 
+  const plan = activeSubscription.plan;
+
   return {
     hasActiveSubscription: !isExpired,
     status: isExpired ? 'EXPIRED' : 'ACTIVE',
     subscription: {
       id: activeSubscription.id,
-      planName: activeSubscription.plan.name,
+      status: activeSubscription.status.toUpperCase(),
       startDate: activeSubscription.startDate,
       endDate: activeSubscription.endDate,
-      daysRemaining: isExpired ? 0 : daysRemaining,
+      billingCycle: activeSubscription.billingCycle,
+      amount: Number(activeSubscription.amount),
       autoRenew: activeSubscription.autoRenew,
-      limits: {
-        gateways: activeSubscription.plan.maxGateways,
-        parkingLots: activeSubscription.plan.maxParkingLots,
-        floors: activeSubscription.plan.maxFloors,
-        parkingSlots: activeSubscription.plan.maxParkingSlots,
-        users: activeSubscription.plan.maxUsers
-      }
+      daysRemaining: isExpired ? 0 : daysRemaining,
+      nextBillingDate: activeSubscription.nextBillingDate,
+      plan: plan
+        ? {
+            id: plan.id,
+            name: plan.name,
+            description: plan.description,
+            currency: plan.currency
+          }
+        : undefined,
+      limits: plan
+        ? {
+            maxGateways: plan.maxGateways,
+            maxParkingLots: plan.maxParkingLots,
+            maxFloors: plan.maxFloors,
+            maxParkingSlots: plan.maxParkingSlots,
+            maxUsers: plan.maxUsers,
+            features: plan.features
+          }
+        : undefined
     }
   };
 };
