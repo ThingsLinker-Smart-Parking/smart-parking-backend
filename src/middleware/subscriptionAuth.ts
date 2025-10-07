@@ -244,10 +244,23 @@ export const getSubscriptionStatus = async (userId: string) => {
   }
 
   const now = new Date();
-  const isExpired = now > activeSubscription.endDate;
-  const daysRemaining = Math.ceil(
-    (activeSubscription.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-  );
+
+  const normaliseDate = (value?: Date | string | null) => {
+    if (!value) {
+      return null;
+    }
+    return value instanceof Date ? value : new Date(value);
+  };
+
+  // TypeORM maps Postgres `date` columns to strings, so coerce before comparisons
+  const endDateValue = normaliseDate(activeSubscription.endDate);
+  const startDateValue = normaliseDate(activeSubscription.startDate);
+  const nextBillingDateValue = normaliseDate(activeSubscription.nextBillingDate);
+
+  const isExpired = endDateValue ? now > endDateValue : true;
+  const daysRemaining = endDateValue
+    ? Math.max(0, Math.ceil((endDateValue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+    : 0;
 
   const planEntity = activeSubscription.plan ?? null;
 
@@ -294,13 +307,13 @@ export const getSubscriptionStatus = async (userId: string) => {
     subscription: {
       id: activeSubscription.id,
       status: activeSubscription.status.toUpperCase(),
-      startDate: activeSubscription.startDate,
-      endDate: activeSubscription.endDate,
+      startDate: startDateValue ?? activeSubscription.startDate,
+      endDate: endDateValue ?? activeSubscription.endDate,
       billingCycle: activeSubscription.billingCycle,
       amount: Number(activeSubscription.amount || 0),
       autoRenew: activeSubscription.autoRenew,
       daysRemaining: isExpired ? 0 : daysRemaining,
-      nextBillingDate: activeSubscription.nextBillingDate,
+      nextBillingDate: nextBillingDateValue ?? activeSubscription.nextBillingDate,
       plan,
       limits
     }

@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 // Remove the package.json import and use environment variable or hardcode version
+const localPort = process.env.PORT || '3000';
 const swaggerOptions = {
     definition: {
         openapi: '3.0.0',
@@ -62,7 +63,7 @@ The system enforces a strict hierarchy: **User (Admin) → ParkingLot → Floor 
                 description: 'Production server'
             },
             {
-                url: 'http://localhost:3001',
+                url: `http://localhost:${localPort}`,
                 description: 'Development server'
             }
         ],

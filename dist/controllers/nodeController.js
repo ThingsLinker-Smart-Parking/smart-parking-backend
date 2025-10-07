@@ -366,17 +366,18 @@ const updateNodeStatus = async (req, res) => {
             });
         }
         // Determine slot status based on percentage
+        // Logic: >= 80% = available (car far/not there), < 60% = occupied (car close/present)
         let slotStatus = 'unknown';
         if (percentage !== undefined) {
             if (percentage >= 80) {
                 slotStatus = 'available';
             }
             else if (percentage < 60) {
-                slotStatus = 'reserved';
+                slotStatus = 'occupied';
             }
             else {
-                // Indeterminate range (60-79%)
-                slotStatus = 'occupied';
+                // Indeterminate range (60-79%) - transition state
+                slotStatus = 'unknown';
             }
         }
         // Update node metadata with all sensor data
@@ -385,7 +386,7 @@ const updateNodeStatus = async (req, res) => {
             distance: distance !== undefined ? distance : node.metadata?.distance,
             percentage: percentage !== undefined ? percentage : node.metadata?.percentage,
             batteryLevel: batteryLevel !== undefined ? batteryLevel : node.metadata?.batteryLevel,
-            state: slotStatus === 'available' ? 'FREE' : slotStatus === 'reserved' || slotStatus === 'occupied' ? 'OCCUPIED' : undefined,
+            state: slotStatus === 'available' ? 'FREE' : slotStatus === 'occupied' ? 'OCCUPIED' : undefined,
             lastUpdated: new Date().toISOString(),
             isOnline: true
         };

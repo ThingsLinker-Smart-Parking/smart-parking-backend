@@ -377,24 +377,100 @@ exports.updateNodeData = updateNodeData;
 const getDashboardStats = async (req, res) => {
     try {
         const nodeRepository = data_source_1.AppDataSource.getRepository(Node_1.Node);
+        const parkingSlotRepository = data_source_1.AppDataSource.getRepository(ParkingSlot_1.ParkingSlot);
         const statusLogRepository = data_source_1.AppDataSource.getRepository(ParkingStatusLog_1.ParkingStatusLog);
         // Get all nodes for this admin
         const nodes = await nodeRepository.find({
             where: {
                 admin: { id: req.user.id }
             },
-            relations: ['parkingSlot', 'parkingSlot.floor', 'parkingSlot.floor.parkingLot', 'gateway']
+            relations: ['parkingSlot']
+        });
+        // Get all parking slots for this admin
+        const allSlots = await parkingSlotRepository
+            .createQueryBuilder('slot')
+            .leftJoinAndSelect('slot.floor', 'floor')
+            .leftJoinAndSelect('floor.parkingLot', 'lot')
+            .where('lot.admin = :adminId', { adminId: req.user.id })
+            .getMany();
+        // Create a map of slotId -> node for quick lookup
+        const slotNodeMap = new Map();
+        nodes.forEach(node => {
+            if (node.parkingSlot) {
+                slotNodeMap.set(node.parkingSlot.id, node);
+            }
+        });
+        // Count slot statuses
+        const slotStatusCounts = {
+            available: 0,
+            occupied: 0,
+            reserved: 0,
+            unknown: 0
+        };
+        for (const slot of allSlots) {
+            // Check if this slot has a node
+            const node = slotNodeMap.get(slot.id);
+            if (node) {
+                // Use the node's current slotStatus
+                const status = node.slotStatus || 'unknown';
+                if (status === 'available')
+                    slotStatusCounts.available++;
+                else if (status === 'occupied')
+                    slotStatusCounts.occupied++;
+                else
+                    slotStatusCounts.unknown++;
+            }
+            else {
+                // Slot without node - try to get from status log
+                const latestLog = await statusLogRepository.findOne({
+                    where: { parkingSlot: { id: slot.id } },
+                    order: { detectedAt: 'DESC' }
+                });
+                if (latestLog) {
+                    const status = latestLog.status;
+                    if (status === 'available')
+                        slotStatusCounts.available++;
+                    else if (status === 'occupied')
+                        slotStatusCounts.occupied++;
+                    else if (status === 'reserved')
+                        slotStatusCounts.reserved++;
+                    else
+                        slotStatusCounts.unknown++;
+                }
+                else {
+                    // No status log and no node, default to unknown
+                    slotStatusCounts.unknown++;
+                }
+            }
+        }
+        // Calculate parking lots and floors
+        const uniqueLots = new Set();
+        const uniqueFloors = new Set();
+        allSlots.forEach(slot => {
+            if (slot.floor?.parkingLot?.id) {
+                uniqueLots.add(slot.floor.parkingLot.id);
+            }
+            if (slot.floor?.id) {
+                uniqueFloors.add(slot.floor.id);
+            }
         });
         // Calculate statistics
         const stats = {
+            totalParkingLots: uniqueLots.size,
+            totalFloors: uniqueFloors.size,
+            totalSlots: allSlots.length,
             totalNodes: nodes.length,
+            totalGateways: 0, // Would need separate query for gateways
             onlineNodes: nodes.filter(node => node.isOnline).length,
             offlineNodes: nodes.filter(node => !node.isOnline && node.isActive).length,
             inactiveNodes: nodes.filter(node => !node.isActive).length,
-            totalSlots: nodes.filter(node => node.parkingSlot).length,
-            availableSlots: nodes.filter(node => node.slotStatus === 'available').length,
-            occupiedSlots: nodes.filter(node => node.slotStatus === 'occupied').length,
-            unknownSlots: nodes.filter(node => node.slotStatus === 'unknown').length,
+            availableSlots: slotStatusCounts.available,
+            occupiedSlots: slotStatusCounts.occupied,
+            reservedSlots: slotStatusCounts.reserved,
+            unknownSlots: slotStatusCounts.unknown,
+            occupancyRate: allSlots.length > 0
+                ? Math.round((slotStatusCounts.occupied / allSlots.length) * 100)
+                : 0,
             averageBatteryLevel: nodes.reduce((sum, node) => sum + (node.batteryLevel || 0), 0) / nodes.length || 0,
             lowBatteryNodes: nodes.filter(node => (node.batteryLevel || 100) < 20).length,
             signalQuality: {

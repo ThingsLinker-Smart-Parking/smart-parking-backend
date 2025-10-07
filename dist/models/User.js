@@ -105,6 +105,38 @@ __decorate([
     __metadata("design:type", Boolean)
 ], User.prototype, "isActive", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true, length: 15 }),
+    __metadata("design:type", String)
+], User.prototype, "phone", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "companyName", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true, length: 15 }),
+    __metadata("design:type", String)
+], User.prototype, "gstNumber", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "address", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true, length: 100 }),
+    __metadata("design:type", String)
+], User.prototype, "city", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true, length: 100 }),
+    __metadata("design:type", String)
+], User.prototype, "state", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true, length: 10 }),
+    __metadata("design:type", String)
+], User.prototype, "zipCode", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true, length: 100 }),
+    __metadata("design:type", String)
+], User.prototype, "country", void 0);
+__decorate([
     (0, typeorm_1.OneToMany)(() => ParkingLot_1.ParkingLot, parkingLot => parkingLot.admin),
     __metadata("design:type", Array)
 ], User.prototype, "parkingLots", void 0);
@@ -124,6 +156,10 @@ __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], User.prototype, "createdAt", void 0);
+__decorate([
+    (0, typeorm_1.UpdateDateColumn)(),
+    __metadata("design:type", Date)
+], User.prototype, "updatedAt", void 0);
 __decorate([
     (0, typeorm_1.BeforeInsert)(),
     __metadata("design:type", Function),

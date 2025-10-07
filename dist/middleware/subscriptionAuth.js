@@ -187,25 +187,66 @@ const getSubscriptionStatus = async (userId) => {
         };
     }
     const now = new Date();
-    const isExpired = now > activeSubscription.endDate;
-    const daysRemaining = Math.ceil((activeSubscription.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const normaliseDate = (value) => {
+        if (!value) {
+            return null;
+        }
+        return value instanceof Date ? value : new Date(value);
+    };
+    // TypeORM maps Postgres `date` columns to strings, so coerce before comparisons
+    const endDateValue = normaliseDate(activeSubscription.endDate);
+    const startDateValue = normaliseDate(activeSubscription.startDate);
+    const nextBillingDateValue = normaliseDate(activeSubscription.nextBillingDate);
+    const isExpired = endDateValue ? now > endDateValue : true;
+    const daysRemaining = endDateValue
+        ? Math.max(0, Math.ceil((endDateValue.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+        : 0;
+    const planEntity = activeSubscription.plan ?? null;
+    const plan = planEntity
+        ? {
+            id: planEntity.id,
+            name: planEntity.name,
+            description: planEntity.description ?? undefined
+        }
+        : undefined;
+    const limits = {
+        maxGateways: planEntity?.maxGateways ??
+            (typeof activeSubscription.gatewayLimit === 'number'
+                ? activeSubscription.gatewayLimit
+                : Number(activeSubscription.gatewayLimit || 0)),
+        maxParkingLots: planEntity?.maxParkingLots ??
+            (typeof activeSubscription.parkingLotLimit === 'number'
+                ? activeSubscription.parkingLotLimit
+                : Number(activeSubscription.parkingLotLimit || 0)),
+        maxFloors: planEntity?.maxFloors ??
+            (typeof activeSubscription.floorLimit === 'number'
+                ? activeSubscription.floorLimit
+                : Number(activeSubscription.floorLimit || 0)),
+        maxParkingSlots: planEntity?.maxParkingSlots ??
+            (typeof activeSubscription.parkingSlotLimit === 'number'
+                ? activeSubscription.parkingSlotLimit
+                : Number(activeSubscription.parkingSlotLimit || 0)),
+        maxUsers: planEntity?.maxUsers ??
+            ((typeof activeSubscription.userLimit === 'number'
+                ? activeSubscription.userLimit
+                : Number(activeSubscription.userLimit || 0)) || undefined),
+        features: planEntity?.features ?? undefined
+    };
     return {
         hasActiveSubscription: !isExpired,
         status: isExpired ? 'EXPIRED' : 'ACTIVE',
         subscription: {
             id: activeSubscription.id,
-            planName: activeSubscription.plan.name,
-            startDate: activeSubscription.startDate,
-            endDate: activeSubscription.endDate,
-            daysRemaining: isExpired ? 0 : daysRemaining,
+            status: activeSubscription.status.toUpperCase(),
+            startDate: startDateValue ?? activeSubscription.startDate,
+            endDate: endDateValue ?? activeSubscription.endDate,
+            billingCycle: activeSubscription.billingCycle,
+            amount: Number(activeSubscription.amount || 0),
             autoRenew: activeSubscription.autoRenew,
-            limits: {
-                gateways: activeSubscription.plan.maxGateways,
-                parkingLots: activeSubscription.plan.maxParkingLots,
-                floors: activeSubscription.plan.maxFloors,
-                parkingSlots: activeSubscription.plan.maxParkingSlots,
-                users: activeSubscription.plan.maxUsers
-            }
+            daysRemaining: isExpired ? 0 : daysRemaining,
+            nextBillingDate: nextBillingDateValue ?? activeSubscription.nextBillingDate,
+            plan,
+            limits
         }
     };
 };
