@@ -8,6 +8,7 @@
     "start": "node dist/index.js",
     "seed:plans": "ts-node src/scripts/seedSubscriptionPlans.ts",
     "create:superadmin": "ts-node src/scripts/createSuperAdmin.ts",
+    "seed:parking-demo": "ts-node src/scripts/seedParkingDemoData.ts",
     "migration:generate": "typeorm-ts-node-commonjs migration:generate",
     "migration:run": "typeorm-ts-node-commonjs migration:run -d src/data-source.ts",
     "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/data-source.ts",

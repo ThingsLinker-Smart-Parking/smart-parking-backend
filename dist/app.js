@@ -129,10 +129,10 @@ const createRateLimiter = (windowMs, max, message) => {
 };
 // Different rate limits for different endpoint types
 const generalApiLimiter = createRateLimiter(15 * 60 * 1000, // 15 minutes
-100, // Limit each IP to 100 requests per 15 minutes for general API endpoints
+1000, // Limit each IP to 1000 requests per 15 minutes for general API endpoints (testing)
 "Too many requests from this IP, please try again after 15 minutes");
 const authLimiter = createRateLimiter(15 * 60 * 1000, // 15 minutes
-20, // Limit each IP to 20 requests per 15 minutes for auth endpoints
+1000, // Limit each IP to 1000 requests per 15 minutes for auth endpoints (testing)
 "Too many authentication attempts, please try again after 15 minutes");
 // Strict limiter for sensitive endpoints (can be used for admin operations)
 const strictLimiter = createRateLimiter(5 * 60 * 1000, // 5 minutes
