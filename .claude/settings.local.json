@@ -57,7 +57,8 @@
       "Bash(npm run seed:plans:*)",
       "Bash(git commit:*)",
       "Bash(PGPASSWORD=\"$DB_PASSWORD\" psql -h \"$DB_HOST\" -U \"$DB_USERNAME\" -d \"$DB_NAME\" -c \"SELECT id, status, detected_at, distance, percentage, battery_level, created_at FROM parking_status_log WHERE parking_slot_id = ''2e9f8379-cecc-468d-b290-51208d7faf04'' ORDER BY detected_at DESC LIMIT 10;\")",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(PGPASSWORD=\"$DB_PASSWORD\" psql -h \"$DB_HOST\" -U \"$DB_USERNAME\" -d \"$DB_NAME\" -c \"SELECT COUNT(*) as orphaned_records FROM parking_status_log psl WHERE NOT EXISTS (SELECT 1 FROM parking_slot ps WHERE ps.id = psl.\"\"parkingSlotId\"\");\")"
     ],
     "deny": [],
     "ask": []

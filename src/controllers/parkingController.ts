@@ -75,11 +75,19 @@ export const getParkingOverview = async (req: AuthRequest, res: Response): Promi
             }
 
             const floorData = lotData.floors.get(floor.id);
+            const slotStatus = node.parkingSlot?.status || node.slotStatus || 'unknown';
             floorData.slots.push({
                 id: node.parkingSlot.id,
                 name: node.parkingSlot.name,
                 isReservable: node.parkingSlot.isReservable,
-                status: node.slotStatus,
+                status: slotStatus,
+                statusUpdatedAt: node.parkingSlot.statusUpdatedAt ? node.parkingSlot.statusUpdatedAt.toISOString() : null,
+                lastMessageReceivedAt: node.parkingSlot.lastMessageReceivedAt ? node.parkingSlot.lastMessageReceivedAt.toISOString() : null,
+                lastSensorState: node.parkingSlot.lastSensorState ?? null,
+                lastDistanceCm: node.parkingSlot.lastDistanceCm !== null && node.parkingSlot.lastDistanceCm !== undefined
+                    ? Number(node.parkingSlot.lastDistanceCm)
+                    : null,
+                lastGatewayId: node.parkingSlot.lastGatewayId ?? null,
                 node: {
                     id: node.id,
                     name: node.name,
@@ -454,8 +462,10 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
             if (node) {
                 // Use the node's current slotStatus
                 const status = node.slotStatus || 'unknown';
-                if (status === 'available') slotStatusCounts.available++;
-                else if (status === 'occupied') slotStatusCounts.occupied++;
+                const persistedStatus = slot.status || status;
+                if (persistedStatus === 'available') slotStatusCounts.available++;
+                else if (persistedStatus === 'occupied') slotStatusCounts.occupied++;
+                else if (persistedStatus === 'reserved') slotStatusCounts.reserved++;
                 else slotStatusCounts.unknown++;
             } else {
                 // Slot without node - try to get from status log
@@ -464,7 +474,13 @@ export const getDashboardStats = async (req: AuthRequest, res: Response): Promis
                     order: { detectedAt: 'DESC' }
                 });
 
-                if (latestLog) {
+                if (slot.status) {
+                    const status = slot.status;
+                    if (status === 'available') slotStatusCounts.available++;
+                    else if (status === 'occupied') slotStatusCounts.occupied++;
+                    else if (status === 'reserved') slotStatusCounts.reserved++;
+                    else slotStatusCounts.unknown++;
+                } else if (latestLog) {
                     const status = latestLog.status;
                     if (status === 'available') slotStatusCounts.available++;
                     else if (status === 'occupied') slotStatusCounts.occupied++;

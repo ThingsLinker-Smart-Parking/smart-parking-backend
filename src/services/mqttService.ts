@@ -1,6 +1,7 @@
 import mqtt, { MqttClient } from 'mqtt';
 import { AppDataSource } from '../data-source';
 import { Node } from '../models/Node';
+import { ParkingSlot } from '../models/ParkingSlot';
 import { ParkingStatusLog } from '../models/ParkingStatusLog';
 import { logger } from './loggerService';
 import { env } from '../config/environment';
@@ -55,12 +56,27 @@ interface ChirpStackUplink {
   regionConfigId: string;
 }
 
+export interface SlotRealtimeSnapshot {
+  slotId: string;
+  devEui: string;
+  status: 'available' | 'occupied' | 'unknown' | 'unmonitored' | 'reserved';
+  sensorState: 'FREE' | 'OCCUPIED' | 'UNKNOWN' | null;
+  distanceCm: number | null;
+  percentage: number | null;
+  batteryLevel: number | null;
+  gatewayId: string | null;
+  signalQuality: 'excellent' | 'good' | 'fair' | 'poor' | null;
+  receivedAt: string;
+  processedAt: string;
+}
+
 export class MqttService {
   private client: MqttClient | null = null;
   private isConnected = false;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectInterval = 5000; // 5 seconds
+  private slotStatusCache: Map<string, SlotRealtimeSnapshot> = new Map();
 
   constructor() {
     this.setupMqtt();
@@ -178,6 +194,7 @@ export class MqttService {
   private async processChirpStackData(data: ChirpStackUplink): Promise<void> {
     try {
       const nodeRepository = AppDataSource.getRepository(Node);
+      const parkingSlotRepository = AppDataSource.getRepository(ParkingSlot);
       const statusLogRepository = AppDataSource.getRepository(ParkingStatusLog);
 
       // Find node by ChirpStack device EUI
@@ -196,18 +213,30 @@ export class MqttService {
         return;
       }
 
+      logger.debug('Processing ChirpStack payload for node', {
+        nodeId: node.id,
+        parkingSlotId: node.parkingSlot?.id,
+        devEui: data.deviceInfo.devEui,
+        applicationId: data.deviceInfo.applicationId,
+        sensorState: data.object.state,
+        distance: data.object.distance_cm,
+      });
+
       // Extract sensor data
       const distance = data.object.distance_cm;
       const sensorState = data.object.state;
+      const messageTime = new Date(data.time);
 
       // Convert distance to percentage (assuming max distance of 200cm for parking slot)
       const maxDistance = 200;
       const percentage = Math.min(100, Math.max(0, (distance / maxDistance) * 100));
 
-      // Extract gateway information
-      const gatewayInfo = data.rxInfo[0]; // Use first gateway
+      // Extract gateway information (use first gateway record when available)
+      const gatewayInfo = data.rxInfo?.[0];
       const batteryLevel = this.extractBatteryLevel(data);
-      const signalQuality = this.calculateSignalQuality(gatewayInfo.rssi, gatewayInfo.snr);
+      const signalQuality = gatewayInfo
+        ? this.calculateSignalQuality(gatewayInfo.rssi, gatewayInfo.snr)
+        : null;
 
       // Update node metadata with latest sensor data
       const existingMetadata = node.metadata ?? {};
@@ -218,10 +247,10 @@ export class MqttService {
         percentage: percentage,
         state: sensorState,
         batteryLevel: batteryLevel,
-        rssi: gatewayInfo.rssi,
-        snr: gatewayInfo.snr,
+        rssi: gatewayInfo?.rssi ?? null,
+        snr: gatewayInfo?.snr ?? null,
         signalQuality: signalQuality,
-        gatewayId: gatewayInfo.gatewayId,
+        gatewayId: gatewayInfo?.gatewayId ?? null,
         frequency: data.txInfo.frequency,
         spreadingFactor: data.txInfo.modulation.lora.spreadingFactor,
         frameCounter: data.fCnt,
@@ -231,8 +260,19 @@ export class MqttService {
 
       // Update node
       node.metadata = updatedMetadata;
-      node.lastSeen = new Date(data.time);
+      node.lastSeen = messageTime;
       await nodeRepository.save(node);
+
+      logger.debug('Node metadata updated from MQTT payload', {
+        nodeId: node.id,
+        parkingSlotId: node.parkingSlot?.id,
+        distance,
+        sensorState,
+        percentage,
+        batteryLevel,
+        signalQuality,
+        gatewayId: gatewayInfo?.gatewayId ?? null,
+      });
 
       // Determine parking slot status based on sensor state and percentage
       let slotStatus: 'available' | 'occupied' | 'unknown' = 'unknown';
@@ -250,39 +290,88 @@ export class MqttService {
         }
       }
 
-      // Log parking status change
+      // Persist slot-level status and realtime snapshot
       if (node.parkingSlot) {
-        await statusLogRepository.save({
-          parkingSlot: node.parkingSlot,
-          status: slotStatus,
-          distance: distance,
-          percentage: percentage,
-          batteryLevel: batteryLevel,
-          signalQuality: signalQuality,
-          metadata: {
-            chirpstackData: {
-              devEui: data.deviceInfo.devEui,
-              gatewayId: gatewayInfo.gatewayId,
-              rssi: gatewayInfo.rssi,
-              snr: gatewayInfo.snr,
-              frequency: data.txInfo.frequency,
-              frameCounter: data.fCnt
-            }
-          }
+        const slot = await parkingSlotRepository.findOne({
+          where: { id: node.parkingSlot.id }
         });
 
-        logger.info('Parking slot status updated from ChirpStack', {
-          nodeId: node.id,
-          parkingSlotId: node.parkingSlot.id,
+        if (!slot) {
+          logger.warn('Parking slot not found while processing ChirpStack payload', {
+            assumedSlotId: node.parkingSlot.id,
+            devEui: data.deviceInfo.devEui
+          });
+          return;
+        }
+
+        const previousStatus = slot.status;
+
+        slot.status = slotStatus;
+        slot.lastMessageReceivedAt = messageTime;
+        slot.lastSensorState = sensorState || null;
+        slot.lastDistanceCm = Number.isFinite(distance) ? Number(distance.toFixed(2)) : null;
+        slot.lastGatewayId = gatewayInfo?.gatewayId ?? null;
+
+        if (previousStatus !== slotStatus || !slot.statusUpdatedAt) {
+          slot.statusUpdatedAt = messageTime;
+        }
+
+        await parkingSlotRepository.save(slot);
+
+        this.slotStatusCache.set(slot.id, {
+          slotId: slot.id,
           devEui: data.deviceInfo.devEui,
-          distance: distance,
-          percentage: percentage,
-          sensorState: sensorState,
-          slotStatus: slotStatus,
-          batteryLevel: batteryLevel,
-          rssi: gatewayInfo.rssi,
-          gatewayId: gatewayInfo.gatewayId
+          status: slot.status,
+          sensorState: slot.lastSensorState,
+          distanceCm: slot.lastDistanceCm,
+          percentage,
+          batteryLevel,
+          gatewayId: slot.lastGatewayId,
+          signalQuality,
+          receivedAt: data.time,
+          processedAt: new Date().toISOString()
         });
+
+        if (previousStatus !== slotStatus) {
+          const statusLog = await statusLogRepository.save({
+            parkingSlot: slot,
+            status: slotStatus,
+            distance: slot.lastDistanceCm,
+            percentage,
+            batteryLevel,
+            signalQuality: signalQuality ?? null,
+            detectedAt: messageTime,
+            metadata: {
+              devEui: data.deviceInfo.devEui,
+              receivedAt: data.time,
+              gatewayId: slot.lastGatewayId
+            }
+          });
+
+          logger.info('Parking slot status updated from ChirpStack', {
+            nodeId: node.id,
+            parkingSlotId: slot.id,
+            devEui: data.deviceInfo.devEui,
+            distance: slot.lastDistanceCm,
+            percentage,
+            sensorState,
+            slotStatus,
+            batteryLevel,
+            gatewayId: slot.lastGatewayId,
+            statusLogId: statusLog.id,
+          });
+        } else {
+          logger.debug('Parking slot telemetry processed without status change', {
+            nodeId: node.id,
+            parkingSlotId: slot.id,
+            devEui: data.deviceInfo.devEui,
+            distance: slot.lastDistanceCm,
+            percentage,
+            sensorState,
+            slotStatus,
+            gatewayId: slot.lastGatewayId
+          });
+        }
       }
 
     } catch (error) {
@@ -351,6 +440,25 @@ export class MqttService {
       connected: this.isConnected,
       reconnectAttempts: this.reconnectAttempts
     };
+  }
+
+  public getSlotRealtimeStatus(slotId: string): SlotRealtimeSnapshot | null {
+    return this.slotStatusCache.get(slotId) ?? null;
+  }
+
+  public getSlotRealtimeStatuses(slotIds?: string[]): SlotRealtimeSnapshot[] {
+    if (!slotIds) {
+      return Array.from(this.slotStatusCache.values());
+    }
+
+    const snapshots: SlotRealtimeSnapshot[] = [];
+    slotIds.forEach(id => {
+      const snapshot = this.slotStatusCache.get(id);
+      if (snapshot) {
+        snapshots.push(snapshot);
+      }
+    });
+    return snapshots;
   }
 
   // Gracefully disconnect

@@ -8,6 +8,8 @@ import {
     assignNodeToParkingSlot,
     unassignNodeFromParkingSlot,
     getParkingSlotStatus,
+    getParkingSlotRealtimeStatus,
+    simulateParkingSlotTelemetry,
     bulkCreateParkingSlots,
     getAllParkingSlots,
     quickAssignNode
@@ -96,6 +98,76 @@ router.get('/', optionallyAuthenticateToken, getAllParkingSlots);
  *         description: Floor not found
  */
 router.get('/floor/:floorId', optionallyAuthenticateToken, getParkingSlotsByFloor);
+
+/**
+ * @swagger
+ * /api/parking-slots/{id}/realtime:
+ *   get:
+ *     summary: Get realtime parking slot status from MQTT cache
+ *     tags: [Parking Slots]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Parking slot ID
+ *     responses:
+ *       200:
+ *         description: Realtime status retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Parking slot not found
+ */
+router.get('/:id/realtime', authenticateToken, requireRole(['admin', 'user']), getParkingSlotRealtimeStatus);
+
+/**
+ * @swagger
+ * /api/parking-slots/{id}/mqtt/simulate:
+ *   post:
+ *     summary: Publish simulated MQTT payload for a parking slot
+ *     tags: [Parking Slots]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Parking slot ID
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               applicationId:
+ *                 type: string
+ *               state:
+ *                 type: string
+ *                 enum: [FREE, OCCUPIED]
+ *               distanceCm:
+ *                 type: number
+ *               gatewayId:
+ *                 type: string
+ *               topic:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Simulated payload published successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/:id/mqtt/simulate', authenticateToken, requireRole(['admin']), simulateParkingSlotTelemetry);
 
 /**
  * @swagger
