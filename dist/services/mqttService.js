@@ -141,8 +141,9 @@ class MqttService {
             const batteryLevel = this.extractBatteryLevel(data);
             const signalQuality = this.calculateSignalQuality(gatewayInfo.rssi, gatewayInfo.snr);
             // Update node metadata with latest sensor data
+            const existingMetadata = node.metadata ?? {};
             const updatedMetadata = {
-                ...node.metadata,
+                ...existingMetadata,
                 distance_cm: distance,
                 percentage: percentage,
                 state: sensorState,
