@@ -34,6 +34,30 @@ __decorate([
     __metadata("design:type", Boolean)
 ], ParkingSlot.prototype, "isReservable", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', default: 'unknown' }),
+    __metadata("design:type", String)
+], ParkingSlot.prototype, "status", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamptz', nullable: true }),
+    __metadata("design:type", Date)
+], ParkingSlot.prototype, "statusUpdatedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamptz', nullable: true }),
+    __metadata("design:type", Date)
+], ParkingSlot.prototype, "lastMessageReceivedAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
+    __metadata("design:type", String)
+], ParkingSlot.prototype, "lastSensorState", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'numeric', precision: 7, scale: 2, nullable: true }),
+    __metadata("design:type", Number)
+], ParkingSlot.prototype, "lastDistanceCm", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
+    __metadata("design:type", String)
+], ParkingSlot.prototype, "lastGatewayId", void 0);
+__decorate([
     (0, typeorm_1.OneToOne)(() => Node_1.Node, node => node.parkingSlot, { nullable: true }),
     __metadata("design:type", Node_1.Node)
 ], ParkingSlot.prototype, "node", void 0);

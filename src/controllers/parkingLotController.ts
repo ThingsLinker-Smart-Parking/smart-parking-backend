@@ -4,14 +4,15 @@ import { ParkingLot } from '../models/ParkingLot';
 import { Gateway } from '../models/Gateway';
 import { AuthRequest } from '../middleware/auth';
 import { validateRequired, validateUuidParam } from '../utils/validation';
-import { 
-  catchAsync, 
-  NotFoundError, 
-  ConflictError, 
+import {
+  catchAsync,
+  NotFoundError,
+  ConflictError,
   ValidationError,
-  AuthorizationError 
+  AuthorizationError
 } from '../middleware/errorHandler';
 import { logger } from '../services/loggerService';
+import { mqttService } from '../services/mqttService';
 
 // Get parking lots based on user role
 export const getMyParkingLots = async (req: AuthRequest, res: Response): Promise<Response> => {
@@ -107,7 +108,15 @@ export const getParkingLotById = catchAsync(async (req: AuthRequest, res: Respon
 
 // Create new parking lot
 export const createParkingLot = async (req: AuthRequest, res: Response): Promise<Response> => {
-    const { name, address, latitude, longitude, isActive } = req.body;
+    const {
+        name,
+        address,
+        latitude,
+        longitude,
+        isActive,
+        chirpstackApplicationId,
+        chirpstackApplicationName
+    } = req.body;
 
     try {
         // Validation
@@ -120,38 +129,84 @@ export const createParkingLot = async (req: AuthRequest, res: Response): Promise
             });
         }
 
+        // Validate ChirpStack Application ID format if provided (UUID format)
+        if (chirpstackApplicationId) {
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (!uuidRegex.test(chirpstackApplicationId)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid ChirpStack Application ID format. Must be a valid UUID.'
+                });
+            }
+        }
+
         const parkingLotRepository = AppDataSource.getRepository(ParkingLot);
-        
+
         // Check if parking lot name already exists for this admin
         const existingParkingLot = await parkingLotRepository.findOne({
-            where: { 
+            where: {
                 name: name.trim(),
-                admin: { id: req.user!.id } 
+                admin: { id: req.user!.id }
             }
         });
-        
+
         if (existingParkingLot) {
             return res.status(400).json({
                 success: false,
                 message: 'Parking lot with this name already exists'
             });
         }
-        
+
+        // Check if Application ID is already in use by another parking lot
+        if (chirpstackApplicationId) {
+            const existingAppId = await parkingLotRepository.findOne({
+                where: { chirpstackApplicationId: chirpstackApplicationId.trim() }
+            });
+
+            if (existingAppId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'This ChirpStack Application ID is already in use by another parking lot'
+                });
+            }
+        }
+
         const newParkingLot = parkingLotRepository.create({
             name: name.trim(),
             address: address.trim(),
             latitude: latitude,
             longitude: longitude,
-            isActive: isActive,
-            admin: req.user!,
-            // Add other fields from req.body if they are part of ParkingLot entity
-            // For example: latitude: req.body.latitude, longitude: req.body.longitude, isActive: req.body.isActive
+            isActive: isActive ?? true,
+            chirpstackApplicationId: chirpstackApplicationId ? chirpstackApplicationId.trim() : null,
+            chirpstackApplicationName: chirpstackApplicationName ? chirpstackApplicationName.trim() : null,
+            admin: req.user!
         });
 
-        logger.debug('Creating new parking lot', { adminId: req.user!.id, parkingLotData: newParkingLot });
+        logger.debug('Creating new parking lot', {
+            adminId: req.user!.id,
+            parkingLotData: {
+                name: newParkingLot.name,
+                applicationId: newParkingLot.chirpstackApplicationId
+            }
+        });
 
         await parkingLotRepository.save(newParkingLot);
-        
+
+        // Subscribe to MQTT topic if Application ID is provided
+        if (newParkingLot.chirpstackApplicationId) {
+            const subscribed = await mqttService.subscribeToApplicationTopic(
+                newParkingLot.chirpstackApplicationId,
+                newParkingLot.name
+            );
+
+            logger.info('MQTT subscription attempt for new parking lot', {
+                parkingLotId: newParkingLot.id,
+                parkingLotName: newParkingLot.name,
+                applicationId: newParkingLot.chirpstackApplicationId,
+                subscribed
+            });
+        }
+
         return res.status(201).json({
             success: true,
             message: 'Parking lot created successfully',

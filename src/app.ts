@@ -507,10 +507,19 @@ AppDataSource.initialize()
     }
 
     import("./services/mqttService")
-      .then(() => {
+      .then(async () => {
         logger.info("MQTT service initialized", {
           broker: mqttBroker,
         });
+
+        // Initialize MQTT cron jobs for health monitoring and maintenance
+        try {
+          const { mqttCronService } = await import("./services/mqttCronService");
+          mqttCronService.initialize();
+          logger.info("MQTT cron service initialized");
+        } catch (cronError) {
+          logger.error("Failed to initialize MQTT cron service", cronError);
+        }
       })
       .catch((mqttError) => {
         logger.error("Failed to initialize MQTT service", mqttError, {

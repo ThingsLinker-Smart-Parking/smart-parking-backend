@@ -3,6 +3,7 @@ import { AppDataSource } from '../data-source';
 import { Node } from '../models/Node';
 import { ParkingSlot } from '../models/ParkingSlot';
 import { ParkingStatusLog } from '../models/ParkingStatusLog';
+import { ParkingLot } from '../models/ParkingLot';
 import { logger } from './loggerService';
 import { env } from '../config/environment';
 
@@ -77,6 +78,7 @@ export class MqttService {
   private maxReconnectAttempts = 5;
   private reconnectInterval = 5000; // 5 seconds
   private slotStatusCache: Map<string, SlotRealtimeSnapshot> = new Map();
+  private subscribedApplicationIds: Set<string> = new Set(); // Track subscribed application IDs
 
   constructor() {
     this.setupMqtt();
@@ -95,13 +97,13 @@ export class MqttService {
         password: env.MQTT_PASSWORD,
         clean: true,
         connectTimeout: 30000,
-        reconnectPeriod: this.reconnectInterval,
-        keepalive: 60,
+        keepalive: 60, // Send ping every 60 seconds to keep connection alive
+        reconnectPeriod: this.reconnectInterval, // Auto-reconnect after 5 seconds
       };
 
       this.client = mqtt.connect(env.MQTT_BROKER_URL, mqttOptions);
 
-      this.client.on('connect', () => {
+      this.client.on('connect', async () => {
         this.isConnected = true;
         this.reconnectAttempts = 0;
 
@@ -110,17 +112,8 @@ export class MqttService {
           clientId: mqttOptions.clientId
         });
 
-        // Subscribe to ChirpStack application topics
-        // Topic pattern: application/{applicationId}/device/+/event/up
-        const topic = 'application/+/device/+/event/up';
-
-        this.client!.subscribe(topic, { qos: 1 }, (err) => {
-          if (err) {
-            logger.error('MQTT subscription failed', err);
-          } else {
-            logger.info('MQTT subscribed to ChirpStack uplink topic', { topic });
-          }
-        });
+        // Subscribe to all ChirpStack application topics from database
+        await this.subscribeToApplicationTopics();
       });
 
       this.client.on('message', (topic, message) => {
@@ -158,6 +151,180 @@ export class MqttService {
     } catch (error) {
       logger.error('Failed to setup MQTT client', error);
     }
+  }
+
+  /**
+   * Subscribe to MQTT topics for all parking lots with ChirpStack Application IDs
+   */
+  private async subscribeToApplicationTopics(): Promise<void> {
+    try {
+      if (!AppDataSource.isInitialized) {
+        logger.warn('Database not initialized, skipping application topic subscription');
+        return;
+      }
+
+      const parkingLotRepository = AppDataSource.getRepository(ParkingLot);
+
+      // Get all active parking lots with Application IDs
+      const parkingLots = await parkingLotRepository.find({
+        where: { isActive: true },
+        select: ['id', 'name', 'chirpstackApplicationId', 'chirpstackApplicationName']
+      });
+
+      const lotsWithAppId = parkingLots.filter(lot => lot.chirpstackApplicationId);
+
+      if (lotsWithAppId.length === 0) {
+        logger.warn('No parking lots with ChirpStack Application IDs found. Subscribing to wildcard topic.');
+        // Fallback to wildcard subscription
+        const wildcardTopic = 'application/+/device/+/event/up';
+        this.client!.subscribe(wildcardTopic, { qos: 1 }, (err) => {
+          if (err) {
+            logger.error('MQTT wildcard subscription failed', err);
+          } else {
+            logger.info('MQTT subscribed to wildcard ChirpStack topic', { topic: wildcardTopic });
+          }
+        });
+        return;
+      }
+
+      // Subscribe to each application's topic
+      for (const lot of lotsWithAppId) {
+        const topic = `application/${lot.chirpstackApplicationId}/device/+/event/up`;
+
+        if (!this.subscribedApplicationIds.has(lot.chirpstackApplicationId)) {
+          this.client!.subscribe(topic, { qos: 1 }, (err) => {
+            if (err) {
+              logger.error('MQTT subscription failed for parking lot', {
+                parkingLotId: lot.id,
+                parkingLotName: lot.name,
+                applicationId: lot.chirpstackApplicationId,
+                topic,
+                error: err.message
+              });
+            } else {
+              this.subscribedApplicationIds.add(lot.chirpstackApplicationId);
+              logger.info('MQTT subscribed to parking lot application topic', {
+                parkingLotId: lot.id,
+                parkingLotName: lot.name,
+                applicationId: lot.chirpstackApplicationId,
+                applicationName: lot.chirpstackApplicationName,
+                topic
+              });
+            }
+          });
+        }
+      }
+
+      logger.info('MQTT topic subscription complete', {
+        totalLots: parkingLots.length,
+        lotsWithAppId: lotsWithAppId.length,
+        subscribedTopics: this.subscribedApplicationIds.size
+      });
+
+    } catch (error) {
+      logger.error('Error subscribing to application topics', error);
+    }
+  }
+
+  /**
+   * Subscribe to a specific parking lot's MQTT topic
+   */
+  public async subscribeToApplicationTopic(applicationId: string, parkingLotName?: string): Promise<boolean> {
+    try {
+      if (!this.client || !this.isConnected) {
+        logger.warn('MQTT client not connected, cannot subscribe', { applicationId });
+        return false;
+      }
+
+      if (this.subscribedApplicationIds.has(applicationId)) {
+        logger.debug('Already subscribed to application topic', { applicationId });
+        return true;
+      }
+
+      const topic = `application/${applicationId}/device/+/event/up`;
+
+      return new Promise((resolve) => {
+        this.client!.subscribe(topic, { qos: 1 }, (err) => {
+          if (err) {
+            logger.error('Failed to subscribe to application topic', {
+              applicationId,
+              parkingLotName,
+              topic,
+              error: err.message
+            });
+            resolve(false);
+          } else {
+            this.subscribedApplicationIds.add(applicationId);
+            logger.info('Successfully subscribed to new application topic', {
+              applicationId,
+              parkingLotName,
+              topic
+            });
+            resolve(true);
+          }
+        });
+      });
+    } catch (error) {
+      logger.error('Error subscribing to application topic', error, { applicationId });
+      return false;
+    }
+  }
+
+  /**
+   * Unsubscribe from a specific parking lot's MQTT topic
+   */
+  public async unsubscribeFromApplicationTopic(applicationId: string): Promise<boolean> {
+    try {
+      if (!this.client || !this.isConnected) {
+        logger.warn('MQTT client not connected, cannot unsubscribe', { applicationId });
+        return false;
+      }
+
+      if (!this.subscribedApplicationIds.has(applicationId)) {
+        logger.debug('Not subscribed to application topic', { applicationId });
+        return true;
+      }
+
+      const topic = `application/${applicationId}/device/+/event/up`;
+
+      return new Promise((resolve) => {
+        this.client!.unsubscribe(topic, (err) => {
+          if (err) {
+            logger.error('Failed to unsubscribe from application topic', {
+              applicationId,
+              topic,
+              error: err.message
+            });
+            resolve(false);
+          } else {
+            this.subscribedApplicationIds.delete(applicationId);
+            logger.info('Successfully unsubscribed from application topic', {
+              applicationId,
+              topic
+            });
+            resolve(true);
+          }
+        });
+      });
+    } catch (error) {
+      logger.error('Error unsubscribing from application topic', error, { applicationId });
+      return false;
+    }
+  }
+
+  /**
+   * Refresh subscriptions (useful when parking lots are added/updated/deleted)
+   */
+  public async refreshSubscriptions(): Promise<void> {
+    logger.info('Refreshing MQTT subscriptions...');
+
+    // Clear current subscriptions
+    for (const appId of this.subscribedApplicationIds) {
+      await this.unsubscribeFromApplicationTopic(appId);
+    }
+
+    // Resubscribe to all active parking lots
+    await this.subscribeToApplicationTopics();
   }
 
   private async handleMessage(topic: string, message: Buffer): Promise<void> {
@@ -435,10 +602,17 @@ export class MqttService {
   }
 
   // Get connection status
-  public getStatus(): { connected: boolean; reconnectAttempts: number } {
+  public getStatus(): {
+    connected: boolean;
+    reconnectAttempts: number;
+    subscribedApplications: string[];
+    subscribedCount: number;
+  } {
     return {
       connected: this.isConnected,
-      reconnectAttempts: this.reconnectAttempts
+      reconnectAttempts: this.reconnectAttempts,
+      subscribedApplications: Array.from(this.subscribedApplicationIds),
+      subscribedCount: this.subscribedApplicationIds.size
     };
   }
 

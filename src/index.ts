@@ -6,9 +6,19 @@ const PORT = process.env.PORT || 3001;
 const packageJson = require('../package.json');
 
 // Graceful shutdown handling
-const gracefulShutdown = (signal: string) => {
-  logger.shutdown('smart-parking-backend', `Received ${signal}`);
-  
+const gracefulShutdown = async (signal: string) => {
+  logger.info(`Received ${signal}, starting graceful shutdown`);
+
+  try {
+    // Stop MQTT cron jobs
+    const { mqttCronService } = await import('./services/mqttCronService');
+    mqttCronService.stopAll();
+    logger.info('MQTT cron service stopped');
+  } catch (err) {
+    logger.warn('Failed to stop MQTT cron service', err);
+  }
+
+  logger.shutdown('smart-parking-backend', `Shutdown complete after ${signal}`);
   process.exit(0);
 };
 

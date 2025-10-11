@@ -26,6 +26,12 @@ export class ParkingLot {
     @Column({ default: true, nullable: true })
     isActive: boolean;
 
+    @Column({ type: 'varchar', nullable: true, unique: true })
+    chirpstackApplicationId: string; // ChirpStack Application ID for MQTT topic subscription
+
+    @Column({ type: 'varchar', nullable: true })
+    chirpstackApplicationName: string; // Human-readable application name
+
     @OneToMany(() => Gateway, gateway => gateway.parkingLot)
     gateways: Gateway[];
 

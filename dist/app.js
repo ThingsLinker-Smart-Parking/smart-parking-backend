@@ -468,10 +468,19 @@ data_source_1.AppDataSource.initialize()
         loggerService_1.logger.info("MQTT service initialization skipped (broker url not configured)");
         return;
     }
-    Promise.resolve().then(() => __importStar(require("./services/mqttService"))).then(() => {
+    Promise.resolve().then(() => __importStar(require("./services/mqttService"))).then(async () => {
         loggerService_1.logger.info("MQTT service initialized", {
             broker: mqttBroker,
         });
+        // Initialize MQTT cron jobs for health monitoring and maintenance
+        try {
+            const { mqttCronService } = await Promise.resolve().then(() => __importStar(require("./services/mqttCronService")));
+            mqttCronService.initialize();
+            loggerService_1.logger.info("MQTT cron service initialized");
+        }
+        catch (cronError) {
+            loggerService_1.logger.error("Failed to initialize MQTT cron service", cronError);
+        }
     })
         .catch((mqttError) => {
         loggerService_1.logger.error("Failed to initialize MQTT service", mqttError, {

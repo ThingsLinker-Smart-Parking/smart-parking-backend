@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAllParkingSlots = exports.quickAssignNode = exports.bulkCreateParkingSlots = exports.getParkingSlotStatus = exports.unassignNodeFromParkingSlot = exports.assignNodeToParkingSlot = exports.deleteParkingSlot = exports.updateParkingSlot = exports.createParkingSlot = exports.getParkingSlotById = exports.getParkingSlotsByFloor = void 0;
+exports.getAllParkingSlots = exports.quickAssignNode = exports.bulkCreateParkingSlots = exports.simulateParkingSlotTelemetry = exports.getParkingSlotRealtimeStatus = exports.getParkingSlotStatus = exports.unassignNodeFromParkingSlot = exports.assignNodeToParkingSlot = exports.deleteParkingSlot = exports.updateParkingSlot = exports.createParkingSlot = exports.getParkingSlotById = exports.getParkingSlotsByFloor = void 0;
+const crypto_1 = require("crypto");
 const data_source_1 = require("../data-source");
 const ParkingSlot_1 = require("../models/ParkingSlot");
 const Floor_1 = require("../models/Floor");
@@ -8,6 +9,7 @@ const Node_1 = require("../models/Node");
 const ParkingStatusLog_1 = require("../models/ParkingStatusLog");
 const validation_1 = require("../utils/validation");
 const loggerService_1 = require("../services/loggerService");
+const mqttService_1 = require("../services/mqttService");
 // Get all parking slots for a specific floor
 const getParkingSlotsByFloor = async (req, res) => {
     const { floorId } = req.params;
@@ -553,6 +555,228 @@ const getParkingSlotStatus = async (req, res) => {
     }
 };
 exports.getParkingSlotStatus = getParkingSlotStatus;
+const getParkingSlotRealtimeStatus = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const idValidation = (0, validation_1.validateUuidParam)(id, 'id');
+        if (!idValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: idValidation.error
+            });
+        }
+        const parkingSlotRepository = data_source_1.AppDataSource.getRepository(ParkingSlot_1.ParkingSlot);
+        const parkingSlot = await parkingSlotRepository.findOne({
+            where: { id },
+            relations: ['floor', 'floor.parkingLot', 'floor.parkingLot.admin', 'node']
+        });
+        if (!parkingSlot) {
+            return res.status(404).json({
+                success: false,
+                message: 'Parking slot not found'
+            });
+        }
+        if (req.user && (req.user.role === 'admin' || req.user.role === 'super_admin')) {
+            const adminId = parkingSlot.floor?.parkingLot?.admin?.id;
+            if (!adminId || adminId !== req.user.id) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Parking slot not found or access denied'
+                });
+            }
+        }
+        const realtimeSnapshot = mqttService_1.mqttService.getSlotRealtimeStatus(parkingSlot.id);
+        const mqttStatus = mqttService_1.mqttService.getStatus();
+        const distanceFromDb = parkingSlot.lastDistanceCm !== null
+            ? Number(parkingSlot.lastDistanceCm)
+            : null;
+        const responsePayload = {
+            slotId: parkingSlot.id,
+            slotName: parkingSlot.name,
+            status: realtimeSnapshot?.status ?? parkingSlot.status ?? 'unknown',
+            statusUpdatedAt: parkingSlot.statusUpdatedAt
+                ? parkingSlot.statusUpdatedAt.toISOString()
+                : null,
+            lastMessageReceivedAt: realtimeSnapshot?.processedAt
+                ?? (parkingSlot.lastMessageReceivedAt ? parkingSlot.lastMessageReceivedAt.toISOString() : null),
+            sensorState: realtimeSnapshot?.sensorState ?? parkingSlot.lastSensorState ?? null,
+            distanceCm: realtimeSnapshot?.distanceCm ?? distanceFromDb,
+            percentage: realtimeSnapshot?.percentage
+                ?? (parkingSlot.node?.metadata?.percentage ?? null),
+            batteryLevel: realtimeSnapshot?.batteryLevel
+                ?? (parkingSlot.node?.metadata?.batteryLevel ?? null),
+            gatewayId: realtimeSnapshot?.gatewayId ?? parkingSlot.lastGatewayId ?? null,
+            dataSource: realtimeSnapshot ? 'mqtt-cache' : 'database',
+            node: parkingSlot.node ? {
+                id: parkingSlot.node.id,
+                name: parkingSlot.node.name,
+                chirpstackDeviceId: parkingSlot.node.chirpstackDeviceId,
+                isOnline: parkingSlot.node.isOnline,
+                lastSeen: parkingSlot.node.lastSeen ? parkingSlot.node.lastSeen.toISOString() : null
+            } : null,
+            mqtt: {
+                connected: mqttStatus.connected,
+                reconnectAttempts: mqttStatus.reconnectAttempts
+            }
+        };
+        loggerService_1.logger.info('Parking slot realtime status retrieved', {
+            slotId: parkingSlot.id,
+            adminId: req.user?.id ?? 'public',
+            dataSource: responsePayload.dataSource,
+            status: responsePayload.status
+        });
+        return res.json({
+            success: true,
+            message: 'Realtime parking slot status retrieved successfully',
+            data: responsePayload
+        });
+    }
+    catch (error) {
+        loggerService_1.logger.error('Get parking slot realtime status error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch realtime parking slot status'
+        });
+    }
+};
+exports.getParkingSlotRealtimeStatus = getParkingSlotRealtimeStatus;
+const simulateParkingSlotTelemetry = async (req, res) => {
+    const { id } = req.params;
+    const { applicationId, state = 'FREE', distanceCm = 150, gatewayId = 'simulated-gateway', topic, rssi = -95, snr = 9.2 } = req.body;
+    try {
+        const idValidation = (0, validation_1.validateUuidParam)(id, 'id');
+        if (!idValidation.isValid) {
+            return res.status(400).json({
+                success: false,
+                message: idValidation.error
+            });
+        }
+        const normalizedState = String(state).toUpperCase();
+        if (!['FREE', 'OCCUPIED'].includes(normalizedState)) {
+            return res.status(400).json({
+                success: false,
+                message: 'State must be either FREE or OCCUPIED'
+            });
+        }
+        const distanceValue = Number(distanceCm);
+        if (!Number.isFinite(distanceValue) || distanceValue < 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'distanceCm must be a positive number'
+            });
+        }
+        const parkingSlotRepository = data_source_1.AppDataSource.getRepository(ParkingSlot_1.ParkingSlot);
+        const nodeRepository = data_source_1.AppDataSource.getRepository(Node_1.Node);
+        const parkingSlot = await parkingSlotRepository.findOne({
+            where: { id },
+            relations: ['floor', 'floor.parkingLot', 'floor.parkingLot.admin']
+        });
+        if (!parkingSlot) {
+            return res.status(404).json({
+                success: false,
+                message: 'Parking slot not found'
+            });
+        }
+        if (!parkingSlot.floor?.parkingLot?.admin || parkingSlot.floor.parkingLot.admin.id !== req.user.id) {
+            return res.status(404).json({
+                success: false,
+                message: 'Parking slot not found or access denied'
+            });
+        }
+        const node = await nodeRepository.findOne({
+            where: { parkingSlot: { id: parkingSlot.id } }
+        });
+        if (!node) {
+            return res.status(400).json({
+                success: false,
+                message: 'No sensor node assigned to this parking slot'
+            });
+        }
+        if (!topic && !applicationId) {
+            return res.status(400).json({
+                success: false,
+                message: 'applicationId is required when topic is not provided'
+            });
+        }
+        const targetTopic = topic
+            ? String(topic)
+            : `application/${applicationId}/device/${node.chirpstackDeviceId}/event/up`;
+        const now = new Date().toISOString();
+        const simulatedPayload = {
+            deduplicationId: (0, crypto_1.randomUUID)(),
+            time: now,
+            deviceInfo: {
+                tenantId: 'simulated-tenant',
+                tenantName: 'Simulated Tenant',
+                applicationId: applicationId || 'simulated-application',
+                applicationName: 'Simulated Application',
+                deviceProfileId: 'simulated-profile',
+                deviceProfileName: 'Simulated Profile',
+                deviceName: node.name,
+                devEui: node.chirpstackDeviceId,
+                deviceClassEnabled: 'CLASS_A',
+                tags: {}
+            },
+            devAddr: '00000000',
+            adr: true,
+            dr: 5,
+            fCnt: Math.floor(Math.random() * 1000),
+            fPort: 2,
+            confirmed: false,
+            data: '',
+            object: {
+                distance_cm: distanceValue,
+                state: normalizedState
+            },
+            rxInfo: [{
+                    gatewayId,
+                    uplinkId: Math.floor(Math.random() * 1000000),
+                    nsTime: now,
+                    rssi,
+                    snr,
+                    channel: 7,
+                    location: {},
+                    context: '',
+                    crcStatus: 'CRC_OK'
+                }],
+            txInfo: {
+                frequency: 867900000,
+                modulation: {
+                    lora: {
+                        bandwidth: 125000,
+                        spreadingFactor: 7,
+                        codeRate: 'CR_4_5'
+                    }
+                }
+            },
+            regionConfigId: 'simulated-region'
+        };
+        await mqttService_1.mqttService.publish(targetTopic, JSON.stringify(simulatedPayload));
+        loggerService_1.logger.info('Simulated MQTT payload published for parking slot', {
+            slotId: parkingSlot.id,
+            nodeId: node.id,
+            topic: targetTopic,
+            state: normalizedState,
+            distance: distanceValue
+        });
+        return res.json({
+            success: true,
+            message: 'Simulated MQTT payload published successfully',
+            data: {
+                topic: targetTopic,
+                payload: simulatedPayload
+            }
+        });
+    }
+    catch (error) {
+        loggerService_1.logger.error('Simulate parking slot telemetry error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to publish simulated MQTT payload'
+        });
+    }
+};
+exports.simulateParkingSlotTelemetry = simulateParkingSlotTelemetry;
 // Bulk create parking slots
 const bulkCreateParkingSlots = async (req, res) => {
     const { floorId } = req.params;

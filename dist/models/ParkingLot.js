@@ -46,6 +46,14 @@ __decorate([
     __metadata("design:type", Boolean)
 ], ParkingLot.prototype, "isActive", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true, unique: true }),
+    __metadata("design:type", String)
+], ParkingLot.prototype, "chirpstackApplicationId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
+    __metadata("design:type", String)
+], ParkingLot.prototype, "chirpstackApplicationName", void 0);
+__decorate([
     (0, typeorm_1.OneToMany)(() => Gateway_1.Gateway, gateway => gateway.parkingLot),
     __metadata("design:type", Array)
 ], ParkingLot.prototype, "gateways", void 0);
