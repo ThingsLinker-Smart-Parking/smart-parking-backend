@@ -499,9 +499,24 @@ AppDataSource.initialize()
       status: "connected",
     });
 
-    // Initialize MQTT service for ChirpStack integration
-    // require('./services/mqttService'); // Temporarily disabled to fix 500 error
-    logger.info("MQTT service initialization skipped (temporarily disabled)");
+    const mqttBroker = process.env.MQTT_BROKER_URL;
+
+    if (!mqttBroker) {
+      logger.info("MQTT service initialization skipped (broker url not configured)");
+      return;
+    }
+
+    import("./services/mqttService")
+      .then(() => {
+        logger.info("MQTT service initialized", {
+          broker: mqttBroker,
+        });
+      })
+      .catch((mqttError) => {
+        logger.error("Failed to initialize MQTT service", mqttError, {
+          broker: mqttBroker,
+        });
+      });
   })
   .catch((err) => {
     logger.error("Database connection failed", err, {
