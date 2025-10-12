@@ -63,7 +63,9 @@
       "Bash(PGPASSWORD=\"$DB_PASSWORD\" psql -h \"$DB_HOST\" -U \"$DB_USERNAME\" -d \"$DB_NAME\" -c \"SELECT id, \"\"chirpstackDeviceId\"\", name, \"\"parkingSlotId\"\" FROM node WHERE \"\"chirpstackDeviceId\"\" = ''0102030405060788'' LIMIT 5;\")",
       "Bash(bash:*)",
       "Bash(npm install:*)",
-      "Bash(PGPASSWORD=\"$DB_PASSWORD\" psql -h \"$DB_HOST\" -U \"$DB_USERNAME\" -d \"$DB_NAME\" -c \"SELECT ps.id, ps.name, ps.status, ps.\"\"lastDistanceCm\"\", ps.\"\"lastGatewayId\"\", ps.\"\"lastSensorState\"\", n.\"\"chirpstackDeviceId\"\" FROM parking_slot ps LEFT JOIN node n ON n.\"\"parkingSlotId\"\" = ps.id WHERE ps.\"\"floorId\"\" IN (SELECT id FROM floor WHERE \"\"parkingLotId\"\" IN (SELECT id FROM parking_lot WHERE \"\"chirpstackApplicationId\"\" = ''031709f4-457f-4e1c-a446-b9780838d050'')) LIMIT 5;\")"
+      "Bash(PGPASSWORD=\"$DB_PASSWORD\" psql -h \"$DB_HOST\" -U \"$DB_USERNAME\" -d \"$DB_NAME\" -c \"SELECT ps.id, ps.name, ps.status, ps.\"\"lastDistanceCm\"\", ps.\"\"lastGatewayId\"\", ps.\"\"lastSensorState\"\", n.\"\"chirpstackDeviceId\"\" FROM parking_slot ps LEFT JOIN node n ON n.\"\"parkingSlotId\"\" = ps.id WHERE ps.\"\"floorId\"\" IN (SELECT id FROM floor WHERE \"\"parkingLotId\"\" IN (SELECT id FROM parking_lot WHERE \"\"chirpstackApplicationId\"\" = ''031709f4-457f-4e1c-a446-b9780838d050'')) LIMIT 5;\")",
+      "Bash(cat:*)",
+      "Bash(PGPASSWORD=\"$DB_PASSWORD\" psql -h \"$DB_HOST\" -U \"$DB_USERNAME\" -d \"$DB_NAME\" -c \"SELECT id, name, \"\"chirpstackApplicationId\"\", \"\"isActive\"\" FROM parking_lot WHERE \"\"chirpstackApplicationId\"\" = ''031709f4-457f-4e1c-a446-b9780838d050'';\")"
     ],
     "deny": [],
     "ask": []

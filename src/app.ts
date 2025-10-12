@@ -507,10 +507,18 @@ AppDataSource.initialize()
     }
 
     import("./services/mqttService")
-      .then(async () => {
+      .then(async (mqttModule) => {
         logger.info("MQTT service initialized", {
           broker: mqttBroker,
         });
+
+        // Refresh subscriptions now that database is initialized
+        try {
+          await mqttModule.mqttService.refreshSubscriptions();
+          logger.info("MQTT subscriptions refreshed after database initialization");
+        } catch (refreshError) {
+          logger.error("Failed to refresh MQTT subscriptions", refreshError);
+        }
 
         // Initialize MQTT cron jobs for health monitoring and maintenance
         try {
