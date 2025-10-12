@@ -994,6 +994,58 @@ export class SubscriptionService {
   }
 
   /**
+   * Get all subscriptions with pagination (Super Admin only)
+   */
+  async getAllSubscriptions(options: {
+    page?: number;
+    limit?: number;
+    status?: SubscriptionStatus;
+    sortBy?: string;
+    sortOrder?: "ASC" | "DESC";
+  }): Promise<{ data: Subscription[]; pagination: any }> {
+    const page = options.page || 1;
+    const limit = options.limit || 20;
+    const offset = (page - 1) * limit;
+    const sortBy = options.sortBy || "createdAt";
+    const sortOrder = options.sortOrder || "DESC";
+
+    const queryBuilder = this.subscriptionRepository
+      .createQueryBuilder("subscription")
+      .leftJoinAndSelect("subscription.admin", "admin")
+      .leftJoinAndSelect("subscription.plan", "plan")
+      .where("subscription.isDeleted = false");
+
+    // Add status filter if provided
+    if (options.status) {
+      queryBuilder.andWhere("subscription.status = :status", {
+        status: options.status,
+      });
+    }
+
+    // Get total count
+    const total = await queryBuilder.getCount();
+
+    // Apply sorting and pagination
+    const subscriptions = await queryBuilder
+      .orderBy(`subscription.${sortBy}`, sortOrder)
+      .skip(offset)
+      .take(limit)
+      .getMany();
+
+    return {
+      data: subscriptions,
+      pagination: {
+        total,
+        count: subscriptions.length,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        hasMore: page * limit < total,
+      },
+    };
+  }
+
+  /**
    * Get expiring subscriptions
    */
   async getExpiringSubscriptions(

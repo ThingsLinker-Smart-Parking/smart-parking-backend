@@ -642,6 +642,49 @@ export const getAllActiveSubscriptions = async (
   }
 };
 
+// Super Admin: Get all subscriptions with pagination
+export const getAllSubscriptions = async (
+  req: AuthRequest,
+  res: Response,
+): Promise<Response> => {
+  try {
+    // Check if user is super admin
+    if (req.user!.role !== "super_admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Super admin privileges required.",
+      });
+    }
+
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const status = req.query.status as any;
+    const sortBy = (req.query.sortBy as string) || "createdAt";
+    const sortOrder = (req.query.sortOrder as "ASC" | "DESC") || "DESC";
+
+    const result = await subscriptionService.getAllSubscriptions({
+      page,
+      limit,
+      status,
+      sortBy,
+      sortOrder,
+    });
+
+    return res.json({
+      success: true,
+      message: "Subscriptions retrieved successfully",
+      data: result.data,
+      pagination: result.pagination,
+    });
+  } catch (error) {
+    logger.error("Get all subscriptions error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
 // Admin: Get expiring subscriptions
 export const getExpiringSubscriptions = async (
   req: AuthRequest,
