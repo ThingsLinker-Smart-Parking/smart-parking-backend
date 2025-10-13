@@ -24,6 +24,85 @@ const router = (0, express_1.Router)();
  */
 /**
  * @swagger
+ * /api/parking-lots/all:
+ *   get:
+ *     summary: Get all parking lots across all admins (Super Admin Only)
+ *     description: Retrieves all parking lots in the system with admin details. Only accessible by super admin role.
+ *     tags: [Parking Lots]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All parking lots retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "All parking lots retrieved successfully"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         format: uuid
+ *                       name:
+ *                         type: string
+ *                       address:
+ *                         type: string
+ *                       latitude:
+ *                         type: number
+ *                       longitude:
+ *                         type: number
+ *                       isActive:
+ *                         type: boolean
+ *                       chirpstackApplicationId:
+ *                         type: string
+ *                         format: uuid
+ *                       chirpstackApplicationName:
+ *                         type: string
+ *                       admin:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             format: uuid
+ *                           email:
+ *                             type: string
+ *                           firstName:
+ *                             type: string
+ *                           lastName:
+ *                             type: string
+ *                           companyName:
+ *                             type: string
+ *                           role:
+ *                             type: string
+ *                       floorsCount:
+ *                         type: integer
+ *                       parkingSlotsCount:
+ *                         type: integer
+ *                       gatewaysCount:
+ *                         type: integer
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                 count:
+ *                   type: integer
+ *       401:
+ *         description: Unauthorized - Authentication required
+ *       403:
+ *         description: Forbidden - Super admin role required
+ */
+router.get('/all', auth_1.authenticateToken, (0, auth_1.requireRole)(['super_admin']), parkingLotController_1.getAllParkingLots);
+/**
+ * @swagger
  * /api/parking-lots:
  *   get:
  *     summary: Get all parking lots for the authenticated admin

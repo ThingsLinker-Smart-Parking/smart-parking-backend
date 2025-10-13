@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSubscriptionStatusController = exports.getPaymentDetails = exports.handlePaymentWebhook = exports.processRefund = exports.finalizeCashfreePayment = exports.processPayment = exports.getExpiringSubscriptions = exports.getAllActiveSubscriptions = exports.checkSubscriptionLimits = exports.getSubscriptionAnalytics = exports.renewSubscription = exports.cancelSubscription = exports.listUserSubscriptions = exports.getUserPaymentHistory = exports.getUserSubscriptionHistory = exports.getUserSubscription = exports.createSubscription = exports.createPaymentSession = exports.getSubscriptionPlan = exports.getSubscriptionPlans = void 0;
+exports.getSubscriptionStatusController = exports.getPaymentDetails = exports.handlePaymentWebhook = exports.processRefund = exports.finalizeCashfreePayment = exports.processPayment = exports.getExpiringSubscriptions = exports.getAllSubscriptions = exports.getAllActiveSubscriptions = exports.checkSubscriptionLimits = exports.getSubscriptionAnalytics = exports.renewSubscription = exports.cancelSubscription = exports.listUserSubscriptions = exports.getUserPaymentHistory = exports.getUserSubscriptionHistory = exports.getUserSubscription = exports.createSubscription = exports.createPaymentSession = exports.getSubscriptionPlan = exports.getSubscriptionPlans = void 0;
 const loggerService_1 = require("../services/loggerService");
 const data_source_1 = require("../data-source");
 const SubscriptionPlan_1 = require("../models/SubscriptionPlan");
@@ -550,6 +550,44 @@ const getAllActiveSubscriptions = async (req, res) => {
     }
 };
 exports.getAllActiveSubscriptions = getAllActiveSubscriptions;
+// Super Admin: Get all subscriptions with pagination
+const getAllSubscriptions = async (req, res) => {
+    try {
+        // Check if user is super admin
+        if (req.user.role !== "super_admin") {
+            return res.status(403).json({
+                success: false,
+                message: "Access denied. Super admin privileges required.",
+            });
+        }
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const status = req.query.status;
+        const sortBy = req.query.sortBy || "createdAt";
+        const sortOrder = req.query.sortOrder || "DESC";
+        const result = await subscriptionService_1.subscriptionService.getAllSubscriptions({
+            page,
+            limit,
+            status,
+            sortBy,
+            sortOrder,
+        });
+        return res.json({
+            success: true,
+            message: "Subscriptions retrieved successfully",
+            data: result.data,
+            pagination: result.pagination,
+        });
+    }
+    catch (error) {
+        loggerService_1.logger.error("Get all subscriptions error:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+};
+exports.getAllSubscriptions = getAllSubscriptions;
 // Admin: Get expiring subscriptions
 const getExpiringSubscriptions = async (req, res) => {
     try {

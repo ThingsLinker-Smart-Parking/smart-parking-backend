@@ -35,8 +35,8 @@ class MqttService {
                 password: environment_1.env.MQTT_PASSWORD,
                 clean: true,
                 connectTimeout: 30000,
-                reconnectPeriod: this.reconnectInterval,
-                keepalive: 60,
+                keepalive: 60, // Send ping every 60 seconds to keep connection alive
+                reconnectPeriod: this.reconnectInterval, // Auto-reconnect after 5 seconds
             };
             this.client = mqtt_1.default.connect(environment_1.env.MQTT_BROKER_URL, mqttOptions);
             this.client.on('connect', async () => {

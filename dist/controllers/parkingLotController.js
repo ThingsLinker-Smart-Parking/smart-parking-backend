@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getGatewaysByParkingLotId = exports.unassignGatewayFromParkingLot = exports.assignGatewayToParkingLot = exports.deleteParkingLot = exports.updateParkingLot = exports.createParkingLot = exports.getParkingLotById = exports.getMyParkingLots = void 0;
+exports.getGatewaysByParkingLotId = exports.unassignGatewayFromParkingLot = exports.assignGatewayToParkingLot = exports.deleteParkingLot = exports.updateParkingLot = exports.createParkingLot = exports.getParkingLotById = exports.getAllParkingLots = exports.getMyParkingLots = void 0;
 const data_source_1 = require("../data-source");
 const ParkingLot_1 = require("../models/ParkingLot");
 const Gateway_1 = require("../models/Gateway");
@@ -46,6 +46,58 @@ const getMyParkingLots = async (req, res) => {
     }
 };
 exports.getMyParkingLots = getMyParkingLots;
+// Get all parking lots (Super Admin only)
+const getAllParkingLots = async (req, res) => {
+    try {
+        const parkingLotRepository = data_source_1.AppDataSource.getRepository(ParkingLot_1.ParkingLot);
+        // Get all parking lots with admin details
+        const parkingLots = await parkingLotRepository.find({
+            relations: ['admin', 'floors', 'floors.parkingSlots', 'gateways'],
+            order: { createdAt: 'DESC' }
+        });
+        // Format the response to include admin information
+        const formattedLots = parkingLots.map(lot => ({
+            id: lot.id,
+            name: lot.name,
+            address: lot.address,
+            latitude: lot.latitude,
+            longitude: lot.longitude,
+            isActive: lot.isActive,
+            chirpstackApplicationId: lot.chirpstackApplicationId,
+            chirpstackApplicationName: lot.chirpstackApplicationName,
+            admin: {
+                id: lot.admin.id,
+                email: lot.admin.email,
+                firstName: lot.admin.firstName,
+                lastName: lot.admin.lastName,
+                companyName: lot.admin.companyName,
+                role: lot.admin.role
+            },
+            floorsCount: lot.floors?.length || 0,
+            parkingSlotsCount: lot.floors?.reduce((sum, floor) => sum + (floor.parkingSlots?.length || 0), 0) || 0,
+            gatewaysCount: lot.gateways?.length || 0,
+            createdAt: lot.createdAt
+        }));
+        loggerService_1.logger.info('All parking lots retrieved by super admin', {
+            superAdminId: req.user.id,
+            totalLots: parkingLots.length
+        });
+        return res.json({
+            success: true,
+            message: 'All parking lots retrieved successfully',
+            data: formattedLots,
+            count: parkingLots.length
+        });
+    }
+    catch (error) {
+        loggerService_1.logger.error('Get all parking lots error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch all parking lots'
+        });
+    }
+};
+exports.getAllParkingLots = getAllParkingLots;
 // Get parking lot by ID (only for admin's own parking lots)
 exports.getParkingLotById = (0, errorHandler_1.catchAsync)(async (req, res) => {
     const { id } = req.params;

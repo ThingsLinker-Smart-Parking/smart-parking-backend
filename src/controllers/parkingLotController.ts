@@ -19,7 +19,7 @@ export const getMyParkingLots = async (req: AuthRequest, res: Response): Promise
     try {
         const parkingLotRepository = AppDataSource.getRepository(ParkingLot);
         let parkingLots;
-        
+
         const isAdminUser = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
 
         if (isAdminUser) {
@@ -38,7 +38,7 @@ export const getMyParkingLots = async (req: AuthRequest, res: Response): Promise
                 (lot as any).admin = undefined;
             });
         }
-        
+
         return res.json({
             success: true,
             message: 'Parking lots retrieved successfully',
@@ -47,9 +47,64 @@ export const getMyParkingLots = async (req: AuthRequest, res: Response): Promise
         });
     } catch (error) {
         logger.error('Get parking lots error:', error);
-        return res.status(500).json({ 
-            success: false, 
-            message: 'Failed to fetch parking lots' 
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch parking lots'
+        });
+    }
+};
+
+// Get all parking lots (Super Admin only)
+export const getAllParkingLots = async (req: AuthRequest, res: Response): Promise<Response> => {
+    try {
+        const parkingLotRepository = AppDataSource.getRepository(ParkingLot);
+
+        // Get all parking lots with admin details
+        const parkingLots = await parkingLotRepository.find({
+            relations: ['admin', 'floors', 'floors.parkingSlots', 'gateways'],
+            order: { createdAt: 'DESC' }
+        });
+
+        // Format the response to include admin information
+        const formattedLots = parkingLots.map(lot => ({
+            id: lot.id,
+            name: lot.name,
+            address: lot.address,
+            latitude: lot.latitude,
+            longitude: lot.longitude,
+            isActive: lot.isActive,
+            chirpstackApplicationId: lot.chirpstackApplicationId,
+            chirpstackApplicationName: lot.chirpstackApplicationName,
+            admin: {
+                id: lot.admin.id,
+                email: lot.admin.email,
+                firstName: lot.admin.firstName,
+                lastName: lot.admin.lastName,
+                companyName: lot.admin.companyName,
+                role: lot.admin.role
+            },
+            floorsCount: lot.floors?.length || 0,
+            parkingSlotsCount: lot.floors?.reduce((sum, floor) => sum + (floor.parkingSlots?.length || 0), 0) || 0,
+            gatewaysCount: lot.gateways?.length || 0,
+            createdAt: lot.createdAt
+        }));
+
+        logger.info('All parking lots retrieved by super admin', {
+            superAdminId: req.user!.id,
+            totalLots: parkingLots.length
+        });
+
+        return res.json({
+            success: true,
+            message: 'All parking lots retrieved successfully',
+            data: formattedLots,
+            count: parkingLots.length
+        });
+    } catch (error) {
+        logger.error('Get all parking lots error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch all parking lots'
         });
     }
 };

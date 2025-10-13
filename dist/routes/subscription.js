@@ -327,6 +327,55 @@ router.get("/limits", auth_1.authenticateToken, subscriptionController_1.checkSu
 // Admin routes
 /**
  * @swagger
+ * /api/subscriptions/admin/all:
+ *   get:
+ *     summary: Get all subscriptions with pagination (Super Admin only)
+ *     tags: [Subscriptions - Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Items per page
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, expired, cancelled, trialing]
+ *         description: Filter by subscription status
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           default: createdAt
+ *         description: Field to sort by
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [ASC, DESC]
+ *           default: DESC
+ *         description: Sort order
+ *     responses:
+ *       200:
+ *         description: All subscriptions retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Insufficient permissions (Super Admin required)
+ */
+router.get("/admin/all", auth_1.authenticateToken, (0, auth_1.requireRole)(["super_admin"]), subscriptionController_1.getAllSubscriptions);
+/**
+ * @swagger
  * /api/subscriptions/admin/active:
  *   get:
  *     summary: Get all active subscriptions (Admin only)

@@ -47,8 +47,10 @@ Test data is pre-seeded for immediate testing. Use \`npm run seed:test-data\` to
   - Unlimited resources, 24/7 premium support, Custom features
 
 ### Architecture:
-**Data Flow**: ChirpStack → MQTT → Node → ParkingSlot → Real-time Status
+**Data Flow**: ChirpStack → MQTT (HiveMQ) → Node → ParkingSlot → Real-time Status
 **Hierarchy**: Nodes connect directly to parking slots; gateway info from MQTT metadata
+**MQTT Integration**: Dynamic topic subscription based on Application IDs stored in ParkingLot table
+**Real-time Updates**: Status changes propagate immediately (<1s) from sensor to database
 
 ### Endpoint Categories:
 - **Authentication**: Login, registration, OTP verification, password reset
@@ -119,6 +121,8 @@ Test data is pre-seeded for immediate testing. Use \`npm run seed:test-data\` to
                         latitude: { type: 'number', format: 'decimal', example: 40.7128 },
                         longitude: { type: 'number', format: 'decimal', example: -74.0060 },
                         isActive: { type: 'boolean', example: true },
+                        chirpstackApplicationId: { type: 'string', format: 'uuid', example: '031709f4-457f-4e1c-a446-b9780838d050', description: 'ChirpStack Application ID for MQTT topic subscription', nullable: true },
+                        chirpstackApplicationName: { type: 'string', example: 'Test_App', description: 'ChirpStack Application Name', nullable: true },
                         createdAt: { type: 'string', format: 'date-time' }
                     }
                 },
