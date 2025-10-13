@@ -14,6 +14,42 @@ const router = Router();
 
 /**
  * @swagger
+ * /api/floors/all:
+ *   get:
+ *     summary: Get all floors across all parking lots (Super Admin only)
+ *     tags: [Floors]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All floors retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "All floors retrieved successfully"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Floor'
+ *                 count:
+ *                   type: integer
+ *                   example: 15
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Access denied - Super Admin only
+ */
+router.get('/all', authenticateToken, requireRole(['super_admin']), getAllFloors);
+
+/**
+ * @swagger
  * /api/floors:
  *   get:
  *     summary: Get all floors for current admin

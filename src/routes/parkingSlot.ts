@@ -20,6 +20,42 @@ const router = Router();
 
 /**
  * @swagger
+ * /api/parking-slots/all:
+ *   get:
+ *     summary: Get all parking slots across all parking lots (Super Admin only)
+ *     tags: [Parking Slots]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All parking slots retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "All parking slots retrieved successfully"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/ParkingSlot'
+ *                 count:
+ *                   type: integer
+ *                   example: 150
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Access denied - Super Admin only
+ */
+router.get('/all', authenticateToken, requireRole(['super_admin']), getAllParkingSlots);
+
+/**
+ * @swagger
  * /api/parking-slots:
  *   get:
  *     summary: Get all parking slots for current admin

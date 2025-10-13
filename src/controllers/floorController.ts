@@ -410,10 +410,14 @@ export const getAllFloors = async (req: AuthRequest, res: Response): Promise<Res
     try {
         const floorRepository = AppDataSource.getRepository(Floor);
 
-        const isAdminUser = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
+        const isSuperAdmin = req.user && req.user.role === 'super_admin';
+        const isAdmin = req.user && req.user.role === 'admin';
 
+        // Super Admin gets all floors, Admin gets only their own floors
         const floors = await floorRepository.find({
-            where: isAdminUser
+            where: isSuperAdmin
+                ? {} // No filter - get all floors
+                : isAdmin
                 ? { parkingLot: { admin: { id: req.user!.id } } }
                 : {},
             relations: ['parkingLot', 'parkingSlots', 'parkingLot.admin'],
@@ -423,7 +427,8 @@ export const getAllFloors = async (req: AuthRequest, res: Response): Promise<Res
             }
         });
 
-        if (!isAdminUser) {
+        // Don't hide admin details for super admin or admin users
+        if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'super_admin')) {
             floors.forEach(floor => {
                 if (floor.parkingLot) {
                     // Hide admin details for public consumers
