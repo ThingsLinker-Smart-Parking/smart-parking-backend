@@ -121,14 +121,19 @@ export const getParkingLotById = catchAsync(async (req: AuthRequest, res: Respon
 
     const parkingLotRepository = AppDataSource.getRepository(ParkingLot);
 
-    const isAdminUser = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
+    const isSuperAdmin = req.user && req.user.role === 'super_admin';
+    const isAdmin = req.user && req.user.role === 'admin';
+    const isAdminUser = isSuperAdmin || isAdmin;
 
     if (isAdminUser) {
         logger.business('Parking lot retrieval requested', 'ParkingLot', id, req.user!.id);
     }
 
+    // Super Admin can view all parking lots, Admin only their own
     const parkingLot = await parkingLotRepository.findOne({
-        where: isAdminUser
+        where: isSuperAdmin
+            ? { id }
+            : isAdmin
             ? {
                 id,
                 admin: { id: req.user!.id }

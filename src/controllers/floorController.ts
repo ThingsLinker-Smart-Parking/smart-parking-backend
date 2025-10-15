@@ -100,7 +100,11 @@ export const getFloorById = async (req: AuthRequest, res: Response): Promise<Res
             });
         }
 
-        if (req.user && (req.user.role === 'admin' || req.user.role === 'super_admin')) {
+        // Check access: Super Admin can view all, Admin can only view their own
+        const isSuperAdmin = req.user && req.user.role === 'super_admin';
+        const isAdmin = req.user && req.user.role === 'admin';
+
+        if (isAdmin && !isSuperAdmin) {
             if (!floor.parkingLot?.admin || floor.parkingLot.admin.id !== req.user.id) {
                 return res.status(404).json({
                     success: false,
@@ -109,7 +113,7 @@ export const getFloorById = async (req: AuthRequest, res: Response): Promise<Res
             }
         }
 
-        const isAdminUser = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
+        const isAdminUser = isSuperAdmin || isAdmin;
 
         const responseData = isAdminUser
             ? floor
@@ -350,17 +354,23 @@ export const deleteFloor = async (req: AuthRequest, res: Response): Promise<Resp
 // Get floor statistics
 export const getFloorStatistics = async (req: AuthRequest, res: Response): Promise<Response> => {
     const { id } = req.params;
-    
+
     try {
         const floorRepository = AppDataSource.getRepository(Floor);
+
+        const isSuperAdmin = req.user && req.user.role === 'super_admin';
+
+        // Super Admin can view all floors, Admin only their own
         const floor = await floorRepository.findOne({
-            where: { 
-                id: id,
-                parkingLot: { admin: { id: req.user!.id } }
-            },
-            relations: ['parkingSlots']
+            where: isSuperAdmin
+                ? { id: id }
+                : {
+                    id: id,
+                    parkingLot: { admin: { id: req.user!.id } }
+                },
+            relations: ['parkingSlots', 'parkingSlots.node']
         });
-        
+
         if (!floor) {
             return res.status(404).json({
                 success: false,
