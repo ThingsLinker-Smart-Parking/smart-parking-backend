@@ -9,10 +9,47 @@ import {
     getNodesBySlots,
     getUnassignedNodes
 } from '../controllers/nodeController';
-import { authenticateToken as auth } from '../middleware/auth';
+import { authenticateToken as auth, requireRole } from '../middleware/auth';
 import { validateBody, nodeSchemas } from '../validation';
 
 const router = Router();
+
+/**
+ * @swagger
+ * /api/nodes/all:
+ *   get:
+ *     summary: Get all nodes across all parking lots (Super Admin only)
+ *     description: Returns all nodes in the system with their relationships (Super Admin access required)
+ *     tags: [Nodes]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All nodes retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "All nodes retrieved successfully"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Node'
+ *                 count:
+ *                   type: integer
+ *                   example: 150
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied - Super Admin only
+ */
+router.get('/all', auth, requireRole(['super_admin']), getNodes);
 
 /**
  * @swagger

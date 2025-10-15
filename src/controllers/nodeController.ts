@@ -14,6 +14,10 @@ export const getNodes = async (req: AuthRequest, res: Response): Promise<Respons
     try {
         const nodeRepository = AppDataSource.getRepository(Node);
 
+        // Check if user is super admin
+        const isSuperAdmin = req.user && req.user.role === 'super_admin';
+        const isAdmin = req.user && req.user.role === 'admin';
+
         // Extract query parameters
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 20;
@@ -23,9 +27,11 @@ export const getNodes = async (req: AuthRequest, res: Response): Promise<Respons
         const skip = (page - 1) * limit;
 
         // Build where clause
-        const whereClause: any = {
-            admin: { id: req.user!.id }
-        };
+        const whereClause: any = isSuperAdmin
+            ? {} // No filter - get all nodes
+            : isAdmin
+            ? { admin: { id: req.user!.id } }
+            : { admin: { id: req.user!.id } };
 
         // Add slotId filter if provided
         if (slotId) {
@@ -35,7 +41,7 @@ export const getNodes = async (req: AuthRequest, res: Response): Promise<Respons
         // Get nodes with pagination
         const [nodes, total] = await nodeRepository.findAndCount({
             where: whereClause,
-            relations: ['parkingSlot', 'parkingSlot.floor', 'parkingSlot.floor.parkingLot'],
+            relations: ['parkingSlot', 'parkingSlot.floor', 'parkingSlot.floor.parkingLot', 'parkingSlot.floor.parkingLot.admin', 'admin'],
             order: { createdAt: 'DESC' },
             skip: skip,
             take: limit
@@ -53,16 +59,20 @@ export const getNodes = async (req: AuthRequest, res: Response): Promise<Respons
             distance: node.distance,
             percentage: node.percentage,
             slotStatus: node.slotStatus,
-            parkingSlot: {
+            parkingSlot: node.parkingSlot ? {
                 id: node.parkingSlot.id,
                 name: node.parkingSlot.name,
-                floor: node.parkingSlot.floor.name,
-                parkingLot: node.parkingSlot.floor.parkingLot.name
-            },
+                floor: node.parkingSlot.floor?.name,
+                parkingLot: node.parkingSlot.floor?.parkingLot?.name
+            } : null,
             gateway: {
                 id: node.gatewayId,
                 name: node.gatewayId ? 'ChirpStack Gateway' : 'Not Connected'
             },
+            admin: isSuperAdmin && node.admin ? {
+                id: node.admin.id,
+                email: node.admin.email
+            } : undefined,
             createdAt: node.createdAt
         }));
 
@@ -103,12 +113,18 @@ export const getNode = async (req: AuthRequest, res: Response): Promise<Response
     try {
         const nodeRepository = AppDataSource.getRepository(Node);
 
+        // Check if user is super admin
+        const isSuperAdmin = req.user && req.user.role === 'super_admin';
+        const isAdmin = req.user && req.user.role === 'admin';
+
         const node = await nodeRepository.findOne({
-            where: {
-                id: nodeId,
-                admin: { id: req.user!.id }
-            },
-            relations: ['parkingSlot', 'parkingSlot.floor', 'parkingSlot.floor.parkingLot']
+            where: isSuperAdmin
+                ? { id: nodeId }
+                : {
+                    id: nodeId,
+                    admin: { id: req.user!.id }
+                },
+            relations: ['parkingSlot', 'parkingSlot.floor', 'parkingSlot.floor.parkingLot', 'admin']
         });
 
         if (!node) {
