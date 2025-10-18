@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PasswordResetToken = exports.ParkingStatusLog = exports.Payment = exports.Subscription = exports.SubscriptionPlan = exports.Gateway = exports.Node = exports.ParkingSlot = exports.Floor = exports.ParkingLot = exports.User = void 0;
+exports.TicketMessage = exports.SupportTicket = exports.PasswordResetToken = exports.ParkingStatusLog = exports.Payment = exports.Subscription = exports.SubscriptionPlan = exports.Gateway = exports.Node = exports.ParkingSlot = exports.Floor = exports.ParkingLot = exports.User = void 0;
 // Export all entities from this central location
 var User_1 = require("./User");
 Object.defineProperty(exports, "User", { enumerable: true, get: function () { return User_1.User; } });
@@ -24,3 +24,7 @@ var ParkingStatusLog_1 = require("./ParkingStatusLog");
 Object.defineProperty(exports, "ParkingStatusLog", { enumerable: true, get: function () { return ParkingStatusLog_1.ParkingStatusLog; } });
 var PasswordResetToken_1 = require("./PasswordResetToken");
 Object.defineProperty(exports, "PasswordResetToken", { enumerable: true, get: function () { return PasswordResetToken_1.PasswordResetToken; } });
+var SupportTicket_1 = require("./SupportTicket");
+Object.defineProperty(exports, "SupportTicket", { enumerable: true, get: function () { return SupportTicket_1.SupportTicket; } });
+var TicketMessage_1 = require("./TicketMessage");
+Object.defineProperty(exports, "TicketMessage", { enumerable: true, get: function () { return TicketMessage_1.TicketMessage; } });

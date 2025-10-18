@@ -6,6 +6,41 @@ const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
 /**
  * @swagger
+ * /api/floors/all:
+ *   get:
+ *     summary: Get all floors across all parking lots (Super Admin only)
+ *     tags: [Floors]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All floors retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "All floors retrieved successfully"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Floor'
+ *                 count:
+ *                   type: integer
+ *                   example: 15
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Access denied - Super Admin only
+ */
+router.get('/all', auth_1.authenticateToken, (0, auth_1.requireRole)(['super_admin']), floorController_1.getAllFloors);
+/**
+ * @swagger
  * /api/floors:
  *   get:
  *     summary: Get all floors for current admin

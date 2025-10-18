@@ -10,3 +10,5 @@ export { Subscription } from './Subscription';
 export { Payment } from './Payment';
 export { ParkingStatusLog } from './ParkingStatusLog';
 export { PasswordResetToken } from './PasswordResetToken';
+export { SupportTicket } from './SupportTicket';
+export { TicketMessage } from './TicketMessage';

@@ -221,5 +221,202 @@ class EmailService {
     getConfig() {
         return { ...this.config };
     }
+    /**
+     * Send support ticket notification email
+     */
+    async sendTicketNotification(email, type, data) {
+        try {
+            let subject = '';
+            let htmlContent = '';
+            switch (type) {
+                case 'new_ticket':
+                    subject = `New Support Ticket: #${data.ticketNumber} - ${data.title}`;
+                    htmlContent = this.generateNewTicketEmailTemplate(data);
+                    break;
+                case 'new_message':
+                    subject = `New message on ticket #${data.ticketNumber}`;
+                    htmlContent = this.generateNewMessageEmailTemplate(data);
+                    break;
+                case 'status_changed':
+                    subject = `Ticket #${data.ticketNumber} status changed to ${data.newStatus}`;
+                    htmlContent = this.generateStatusChangedEmailTemplate(data);
+                    break;
+            }
+            if (this.transporter) {
+                await this.transporter.sendMail({
+                    from: this.config.from,
+                    to: email,
+                    subject: subject,
+                    html: htmlContent,
+                });
+                console.log(`✅ Ticket notification email sent to ${email} (${type})`);
+                return true;
+            }
+            else {
+                // Fallback to console logging for development
+                console.log(`📧 [DEV MODE] Ticket Notification to ${email}:`);
+                console.log(`   Type: ${type}`);
+                console.log(`   Subject: ${subject}`);
+                console.log(`   Data:`, data);
+                return true;
+            }
+        }
+        catch (error) {
+            console.error('❌ Error sending ticket notification:', error);
+            return false;
+        }
+    }
+    generateNewTicketEmailTemplate(data) {
+        const priorityColor = {
+            urgent: '#e74c3c',
+            high: '#e67e22',
+            medium: '#f39c12',
+            low: '#3498db',
+        }[data.priority] || '#95a5a6';
+        return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>New Support Ticket</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: #2c3e50; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+                .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+                .ticket-info { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${priorityColor}; }
+                .button { display: inline-block; padding: 12px 24px; background: #FF9500; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+                .footer { text-align: center; margin-top: 20px; color: #7f8c8d; font-size: 14px; }
+                .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+                .priority-${data.priority} { background: ${priorityColor}; color: white; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>🎫 New Support Ticket</h1>
+                </div>
+                <div class="content">
+                    <p>A new support ticket has been created.</p>
+
+                    <div class="ticket-info">
+                        <h3>Ticket #${data.ticketNumber}</h3>
+                        <p><strong>Title:</strong> ${data.title}</p>
+                        <p><strong>Category:</strong> ${data.category}</p>
+                        <p><strong>Priority:</strong> <span class="badge priority-${data.priority}">${data.priority}</span></p>
+                        <p><strong>Created by:</strong> ${data.userName} (${data.userEmail})</p>
+                        <hr>
+                        <p><strong>Description:</strong></p>
+                        <p>${data.description}</p>
+                    </div>
+
+                    <a href="${data.ticketUrl}" class="button">View Ticket</a>
+
+                    <p>Please respond to this ticket as soon as possible.</p>
+                </div>
+                <div class="footer">
+                    <p>Smart Parking System - Support Notification</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        `;
+    }
+    generateNewMessageEmailTemplate(data) {
+        return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>New Message on Support Ticket</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: #3498db; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+                .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+                .message-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3498db; }
+                .button { display: inline-block; padding: 12px 24px; background: #FF9500; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+                .footer { text-align: center; margin-top: 20px; color: #7f8c8d; font-size: 14px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>💬 New Message</h1>
+                </div>
+                <div class="content">
+                    <p>A new message has been posted on ticket #${data.ticketNumber}.</p>
+
+                    <div class="message-box">
+                        <p><strong>From:</strong> ${data.senderName}</p>
+                        <hr>
+                        <p>${data.message}</p>
+                    </div>
+
+                    <a href="${data.ticketUrl}" class="button">View Conversation</a>
+                </div>
+                <div class="footer">
+                    <p>Smart Parking System - Support Notification</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        `;
+    }
+    generateStatusChangedEmailTemplate(data) {
+        const statusColor = {
+            open: '#3498db',
+            in_progress: '#f39c12',
+            resolved: '#27ae60',
+            unresolved: '#e74c3c',
+            closed: '#95a5a6',
+        }[data.newStatus] || '#95a5a6';
+        return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Ticket Status Changed</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: ${statusColor}; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+                .content { background: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; }
+                .status-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; }
+                .status-badge { display: inline-block; padding: 10px 20px; background: ${statusColor}; color: white; border-radius: 5px; font-size: 18px; font-weight: bold; text-transform: uppercase; }
+                .button { display: inline-block; padding: 12px 24px; background: #FF9500; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+                .footer { text-align: center; margin-top: 20px; color: #7f8c8d; font-size: 14px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>✓ Status Update</h1>
+                </div>
+                <div class="content">
+                    <p>Your support ticket status has been updated.</p>
+
+                    <div class="status-box">
+                        <h3>Ticket #${data.ticketNumber}</h3>
+                        <p>${data.title}</p>
+                        <div style="margin: 20px 0;">
+                            <p><strong>New Status:</strong></p>
+                            <span class="status-badge">${data.newStatus.replace('_', ' ')}</span>
+                        </div>
+                    </div>
+
+                    <a href="${data.ticketUrl}" class="button">View Ticket</a>
+                </div>
+                <div class="footer">
+                    <p>Smart Parking System - Support Notification</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        `;
+    }
 }
 exports.emailService = new EmailService();

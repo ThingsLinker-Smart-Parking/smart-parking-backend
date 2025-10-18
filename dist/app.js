@@ -60,6 +60,7 @@ const subscription_1 = __importDefault(require("./routes/subscription"));
 const subscriptionPlan_1 = __importDefault(require("./routes/subscriptionPlan"));
 const health_1 = __importDefault(require("./routes/health"));
 const parking_1 = __importDefault(require("./routes/parking"));
+const ticket_1 = __importDefault(require("./routes/ticket"));
 const subscriptionService_1 = require("./services/subscriptionService");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
@@ -142,6 +143,8 @@ app.use(logging_1.securityLoggingMiddleware);
 app.use(logging_1.rateLimitLoggingMiddleware);
 app.use(express_1.default.json({ limit: "10mb" }));
 app.use(express_1.default.urlencoded({ extended: true }));
+// Serve static files from uploads directory
+app.use('/uploads', express_1.default.static('uploads'));
 // Rate Limiting Configuration
 const createRateLimiter = (windowMs, max, message) => {
     return (0, express_rate_limit_1.default)({
@@ -215,6 +218,7 @@ app.use(`/api/${API_VERSION}/floors`, floor_1.default);
 app.use(`/api/${API_VERSION}/subscriptions`, subscription_1.default);
 app.use(`/api/${API_VERSION}/subscription-plans`, subscriptionPlan_1.default);
 app.use(`/api/${API_VERSION}/parking`, parking_1.default);
+app.use(`/api/${API_VERSION}/tickets`, ticket_1.default);
 // Legacy routes (without versioning) for backward compatibility
 app.use("/api/auth", auth_1.default);
 app.use("/api/nodes", node_1.default);
@@ -225,6 +229,7 @@ app.use("/api/floors", floor_1.default);
 app.use("/api/subscriptions", subscription_1.default);
 app.use("/api/subscription-plans", subscriptionPlan_1.default);
 app.use("/api/parking", parking_1.default);
+app.use("/api/tickets", ticket_1.default);
 // Health routes (unversioned)
 app.use("/api/health", health_1.default);
 // Test endpoint without authentication

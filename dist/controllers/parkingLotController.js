@@ -107,17 +107,22 @@ exports.getParkingLotById = (0, errorHandler_1.catchAsync)(async (req, res) => {
         throw new errorHandler_1.ValidationError(idValidation.error);
     }
     const parkingLotRepository = data_source_1.AppDataSource.getRepository(ParkingLot_1.ParkingLot);
-    const isAdminUser = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
+    const isSuperAdmin = req.user && req.user.role === 'super_admin';
+    const isAdmin = req.user && req.user.role === 'admin';
+    const isAdminUser = isSuperAdmin || isAdmin;
     if (isAdminUser) {
         loggerService_1.logger.business('Parking lot retrieval requested', 'ParkingLot', id, req.user.id);
     }
+    // Super Admin can view all parking lots, Admin only their own
     const parkingLot = await parkingLotRepository.findOne({
-        where: isAdminUser
-            ? {
-                id,
-                admin: { id: req.user.id }
-            }
-            : { id },
+        where: isSuperAdmin
+            ? { id }
+            : isAdmin
+                ? {
+                    id,
+                    admin: { id: req.user.id }
+                }
+                : { id },
         relations: ['floors', 'floors.parkingSlots', 'gateways', 'admin']
     });
     if (!parkingLot) {

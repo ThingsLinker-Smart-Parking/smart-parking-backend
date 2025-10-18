@@ -966,16 +966,20 @@ exports.quickAssignNode = quickAssignNode;
 const getAllParkingSlots = async (req, res) => {
     try {
         const parkingSlotRepository = data_source_1.AppDataSource.getRepository(ParkingSlot_1.ParkingSlot);
-        const isAdminUser = req.user && (req.user.role === 'admin' || req.user.role === 'super_admin');
+        const isSuperAdmin = req.user && req.user.role === 'super_admin';
+        const isAdmin = req.user && req.user.role === 'admin';
+        // Super Admin gets all slots, Admin gets only their own slots
         const parkingSlots = await parkingSlotRepository.find({
-            where: isAdminUser
-                ? {
-                    floor: {
-                        parkingLot: { admin: { id: req.user.id } }
+            where: isSuperAdmin
+                ? {} // No filter - get all slots
+                : isAdmin
+                    ? {
+                        floor: {
+                            parkingLot: { admin: { id: req.user.id } }
+                        }
                     }
-                }
-                : {},
-            relations: ['floor', 'floor.parkingLot', 'floor.parkingLot.admin'],
+                    : {},
+            relations: ['floor', 'floor.parkingLot', 'floor.parkingLot.admin', 'node'],
             order: {
                 floor: {
                     parkingLot: { name: 'ASC' },
@@ -984,7 +988,8 @@ const getAllParkingSlots = async (req, res) => {
                 name: 'ASC'
             }
         });
-        if (!isAdminUser) {
+        // Don't hide admin details for super admin or admin users
+        if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'super_admin')) {
             parkingSlots.forEach(slot => {
                 if (slot.floor?.parkingLot) {
                     slot.floor.parkingLot.admin = undefined;

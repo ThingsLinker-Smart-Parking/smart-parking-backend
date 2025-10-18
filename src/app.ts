@@ -27,6 +27,7 @@ import subscriptionRoutes from "./routes/subscription";
 import subscriptionPlanRoutes from "./routes/subscriptionPlan";
 import healthRoutes from "./routes/health";
 import parkingRoutes from "./routes/parking";
+import ticketRoutes from "./routes/ticket";
 import { subscriptionService } from "./services/subscriptionService";
 
 dotenv.config();
@@ -127,6 +128,9 @@ app.use(rateLimitLoggingMiddleware);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files from uploads directory
+app.use('/uploads', express.static('uploads'));
+
 // Rate Limiting Configuration
 const createRateLimiter = (windowMs: number, max: number, message: string) => {
   return rateLimit({
@@ -220,6 +224,7 @@ app.use(`/api/${API_VERSION}/floors`, floorRoutes);
 app.use(`/api/${API_VERSION}/subscriptions`, subscriptionRoutes);
 app.use(`/api/${API_VERSION}/subscription-plans`, subscriptionPlanRoutes);
 app.use(`/api/${API_VERSION}/parking`, parkingRoutes);
+app.use(`/api/${API_VERSION}/tickets`, ticketRoutes);
 
 // Legacy routes (without versioning) for backward compatibility
 app.use("/api/auth", authRoutes);
@@ -231,6 +236,7 @@ app.use("/api/floors", floorRoutes);
 app.use("/api/subscriptions", subscriptionRoutes);
 app.use("/api/subscription-plans", subscriptionPlanRoutes);
 app.use("/api/parking", parkingRoutes);
+app.use("/api/tickets", ticketRoutes);
 
 // Health routes (unversioned)
 app.use("/api/health", healthRoutes);

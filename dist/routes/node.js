@@ -7,6 +7,42 @@ const validation_1 = require("../validation");
 const router = (0, express_1.Router)();
 /**
  * @swagger
+ * /api/nodes/all:
+ *   get:
+ *     summary: Get all nodes across all parking lots (Super Admin only)
+ *     description: Returns all nodes in the system with their relationships (Super Admin access required)
+ *     tags: [Nodes]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All nodes retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "All nodes retrieved successfully"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Node'
+ *                 count:
+ *                   type: integer
+ *                   example: 150
+ *       401:
+ *         $ref: '#/components/responses/UnauthorizedError'
+ *       403:
+ *         description: Access denied - Super Admin only
+ */
+router.get('/all', auth_1.authenticateToken, (0, auth_1.requireRole)(['super_admin']), nodeController_1.getNodes);
+/**
+ * @swagger
  * /api/nodes:
  *   get:
  *     summary: Get all nodes for the authenticated admin with pagination and filtering
