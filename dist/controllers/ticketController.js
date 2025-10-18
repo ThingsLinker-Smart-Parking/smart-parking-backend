@@ -176,10 +176,11 @@ const updateTicket = async (req, res) => {
                     message: 'Only super admins can assign tickets',
                 });
             }
-            if (req.body.status && !['open', 'closed'].includes(req.body.status)) {
+            // Ticket creators can mark as resolved/unresolved, but only super admins can mark as in_progress or closed
+            if (req.body.status && !['resolved', 'unresolved'].includes(req.body.status)) {
                 return res.status(403).json({
                     success: false,
-                    message: 'Only super admins can change ticket status to this value',
+                    message: 'You can only mark tickets as resolved or unresolved',
                 });
             }
         }
