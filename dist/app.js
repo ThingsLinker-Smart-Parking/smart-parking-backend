@@ -42,6 +42,7 @@ const helmet_1 = __importDefault(require("helmet"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const compression_1 = __importDefault(require("compression"));
 const dotenv_1 = __importDefault(require("dotenv"));
+const path_1 = __importDefault(require("path"));
 const swagger_jsdoc_1 = __importDefault(require("swagger-jsdoc"));
 const swagger_ui_express_1 = __importDefault(require("swagger-ui-express"));
 const data_source_1 = require("./data-source");
@@ -144,7 +145,23 @@ app.use(logging_1.rateLimitLoggingMiddleware);
 app.use(express_1.default.json({ limit: "10mb" }));
 app.use(express_1.default.urlencoded({ extended: true }));
 // Serve static files from uploads directory
-app.use('/uploads', express_1.default.static('uploads'));
+const uploadsPath = path_1.default.join(__dirname, '../uploads');
+loggerService_1.logger.info(`Serving static files from: ${uploadsPath}`);
+app.use('/uploads', express_1.default.static(uploadsPath, {
+    setHeaders: (res, filePath) => {
+        // Set proper MIME types for images
+        if (filePath.endsWith('.png'))
+            res.setHeader('Content-Type', 'image/png');
+        if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg'))
+            res.setHeader('Content-Type', 'image/jpeg');
+        if (filePath.endsWith('.gif'))
+            res.setHeader('Content-Type', 'image/gif');
+        if (filePath.endsWith('.webp'))
+            res.setHeader('Content-Type', 'image/webp');
+        if (filePath.endsWith('.pdf'))
+            res.setHeader('Content-Type', 'application/pdf');
+    }
+}));
 // Rate Limiting Configuration
 const createRateLimiter = (windowMs, max, message) => {
     return (0, express_rate_limit_1.default)({

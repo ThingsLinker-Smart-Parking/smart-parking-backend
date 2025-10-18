@@ -4,6 +4,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import compression from "compression";
 import dotenv from "dotenv";
+import path from "path";
 import swaggerJsdoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
 import { AppDataSource } from "./data-source";
@@ -129,7 +130,18 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from uploads directory
-app.use('/uploads', express.static('uploads'));
+const uploadsPath = path.join(__dirname, '../uploads');
+logger.info(`Serving static files from: ${uploadsPath}`);
+app.use('/uploads', express.static(uploadsPath, {
+  setHeaders: (res, filePath) => {
+    // Set proper MIME types for images
+    if (filePath.endsWith('.png')) res.setHeader('Content-Type', 'image/png');
+    if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) res.setHeader('Content-Type', 'image/jpeg');
+    if (filePath.endsWith('.gif')) res.setHeader('Content-Type', 'image/gif');
+    if (filePath.endsWith('.webp')) res.setHeader('Content-Type', 'image/webp');
+    if (filePath.endsWith('.pdf')) res.setHeader('Content-Type', 'application/pdf');
+  }
+}));
 
 // Rate Limiting Configuration
 const createRateLimiter = (windowMs: number, max: number, message: string) => {
