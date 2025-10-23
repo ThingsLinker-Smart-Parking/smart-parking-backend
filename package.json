@@ -6,7 +6,7 @@
     "dev": "nodemon src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "seed:plans": "ts-node src/scripts/seedSubscriptionPlans.ts",
+    "seed:plans": "ts-node src/scripts/seedSimpleSubscriptionPlans.ts",
     "seed:test-data": "node seed-test-data.js",
     "create:superadmin": "ts-node src/scripts/createSuperAdmin.ts",
     "seed:parking-demo": "ts-node src/scripts/seedParkingDemoData.ts",

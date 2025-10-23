@@ -70,9 +70,9 @@ export const getAllSubscriptionPlans = catchAsync(async (req: AuthRequest, res: 
 
   // Price range filtering
   if (minPrice || maxPrice) {
-    const priceField = billingCycle === 'yearly' ? 'basePricePerYear' : 
-                      billingCycle === 'quarterly' ? 'basePricePerQuarter' : 
-                      'basePricePerMonth';
+    const priceField = billingCycle === 'yearly' ? 'pricePerDevicePerYear' :
+                      billingCycle === 'quarterly' ? 'pricePerDevicePerQuarter' :
+                      'pricePerDevicePerMonth';
     
     if (minPrice && maxPrice) {
       whereConditions[priceField] = Between(Number(minPrice), Number(maxPrice));
@@ -99,16 +99,18 @@ export const getAllSubscriptionPlans = catchAsync(async (req: AuthRequest, res: 
       name: plan.name,
       description: plan.description,
       pricing: {
-        monthly: {
-          base: plan.basePricePerMonth,
-          perNode: plan.pricePerNodePerMonth,
-          formatted: plan.getFormattedPrices('monthly', 0)
+        perDevice: {
+          monthly: Number(plan.pricePerDevicePerMonth),
+          yearly: Number(plan.pricePerDevicePerYear),
+          quarterly: Number(plan.pricePerDevicePerQuarter)
         },
-        yearly: {
-          base: plan.basePricePerYear,
-          perNode: plan.pricePerNodePerYear,
-          formatted: plan.getFormattedPrices('yearly', 0),
-          discount: plan.getYearlyDiscount()
+        formatted: {
+          monthly: plan.getFormattedPrices('monthly', 1),
+          yearly: plan.getFormattedPrices('yearly', 1),
+          quarterly: plan.getFormattedPrices('quarterly', 1)
+        },
+        discount: {
+          yearly: plan.getYearlyDiscount()
         }
       },
       limits: {
@@ -130,20 +132,13 @@ export const getAllSubscriptionPlans = catchAsync(async (req: AuthRequest, res: 
         isPopular: plan.isPopular,
         isCustom: plan.isCustom,
         defaultBillingCycle: plan.defaultBillingCycle,
-        sortOrder: plan.sortOrder
+        sortOrder: plan.sortOrder,
+        usdToInrRate: plan.usdToInrRate
       },
       createdAt: plan.createdAt,
       updatedAt: plan.updatedAt
     };
 
-    // Add quarterly pricing if available
-    if (plan.basePricePerQuarter) {
-      planData.pricing.quarterly = {
-        base: plan.basePricePerQuarter,
-        perNode: plan.quarterlyNodePrice,
-        formatted: plan.getFormattedPrices('quarterly', 0)
-      };
-    }
 
     // Add admin-only fields
     if (user?.role === 'super_admin') {
@@ -212,16 +207,18 @@ export const getSubscriptionPlanById = catchAsync(async (req: AuthRequest, res: 
     name: plan.name,
     description: plan.description,
     pricing: {
-      monthly: {
-        base: plan.basePricePerMonth,
-        perNode: plan.pricePerNodePerMonth,
-        formatted: plan.getFormattedPrices('monthly', 0)
+      perDevice: {
+        monthly: Number(plan.pricePerDevicePerMonth),
+        yearly: Number(plan.pricePerDevicePerYear),
+        quarterly: Number(plan.pricePerDevicePerQuarter)
       },
-      yearly: {
-        base: plan.basePricePerYear,
-        perNode: plan.pricePerNodePerYear,
-        formatted: plan.getFormattedPrices('yearly', 0),
-        discount: plan.getYearlyDiscount()
+      formatted: {
+        monthly: plan.getFormattedPrices('monthly', 1),
+        yearly: plan.getFormattedPrices('yearly', 1),
+        quarterly: plan.getFormattedPrices('quarterly', 1)
+      },
+      discount: {
+        yearly: plan.getYearlyDiscount()
       }
     },
     limits: {
@@ -249,14 +246,6 @@ export const getSubscriptionPlanById = catchAsync(async (req: AuthRequest, res: 
     updatedAt: plan.updatedAt
   };
 
-  // Add quarterly pricing if available
-  if (plan.basePricePerQuarter) {
-    planData.pricing.quarterly = {
-      base: plan.basePricePerQuarter,
-      perNode: plan.quarterlyNodePrice,
-      formatted: plan.getFormattedPrices('quarterly', 0)
-    };
-  }
 
   // Add admin-only fields
   if (user?.role === 'super_admin') {
@@ -313,7 +302,7 @@ export const createSubscriptionPlan = catchAsync(async (req: AuthRequest, res: R
   logger.business('Subscription plan created successfully', 'SubscriptionPlan', savedPlan.id, {
     userId: user.id,
     planName: savedPlan.name,
-    monthlyPrice: savedPlan.basePricePerMonth
+    monthlyPrice: savedPlan.pricePerDevicePerMonth
   });
   
   return res.status(201).json({
@@ -324,9 +313,11 @@ export const createSubscriptionPlan = catchAsync(async (req: AuthRequest, res: R
       name: savedPlan.name,
       description: savedPlan.description,
       pricing: {
-        monthly: savedPlan.basePricePerMonth,
-        yearly: savedPlan.basePricePerYear,
-        quarterly: savedPlan.basePricePerQuarter
+        perDevice: {
+          monthly: savedPlan.pricePerDevicePerMonth,
+          yearly: savedPlan.pricePerDevicePerYear,
+          quarterly: savedPlan.pricePerDevicePerQuarter
+        }
       },
       isActive: savedPlan.isActive,
       createdAt: savedPlan.createdAt
@@ -527,9 +518,9 @@ export const getSubscriptionPlanStats = catchAsync(async (req: AuthRequest, res:
   // Get price statistics
   const priceStats = await subscriptionPlanRepository
     .createQueryBuilder('plan')
-    .select('MIN(plan.basePricePerMonth)', 'minPrice')
-    .addSelect('MAX(plan.basePricePerMonth)', 'maxPrice')
-    .addSelect('AVG(plan.basePricePerMonth)', 'avgPrice')
+    .select('MIN(plan.pricePerDevicePerMonth)', 'minPrice')
+    .addSelect('MAX(plan.pricePerDevicePerMonth)', 'maxPrice')
+    .addSelect('AVG(plan.pricePerDevicePerMonth)', 'avgPrice')
     .where('plan.isDeleted = false AND plan.isActive = true')
     .getRawOne();
   

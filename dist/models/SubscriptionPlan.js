@@ -13,60 +13,33 @@ exports.SubscriptionPlan = void 0;
 const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
 let SubscriptionPlan = class SubscriptionPlan {
-    // Virtual properties for calculated values
-    get monthlyPrice() {
-        return this.basePricePerMonth;
-    }
-    get yearlyPrice() {
-        return this.basePricePerYear;
-    }
-    get quarterlyPrice() {
-        return this.basePricePerQuarter || (this.basePricePerMonth * 3);
-    }
-    get quarterlyNodePrice() {
-        return this.pricePerNodePerQuarter || (this.pricePerNodePerMonth * 3);
-    }
-    // Get price for specific billing cycle
-    getPriceForCycle(cycle) {
+    // Get per-device price for specific billing cycle
+    getDevicePriceForCycle(cycle) {
         switch (cycle) {
             case 'monthly':
-                return this.basePricePerMonth;
+                return this.pricePerDevicePerMonth;
             case 'yearly':
-                return this.basePricePerYear;
+                return this.pricePerDevicePerYear;
             case 'quarterly':
-                return this.basePricePerQuarter || (this.basePricePerMonth * 3);
+                return this.pricePerDevicePerQuarter;
             default:
-                return this.basePricePerMonth;
+                return this.pricePerDevicePerMonth;
         }
     }
-    // Get per-node price for specific billing cycle
-    getNodePriceForCycle(cycle) {
-        switch (cycle) {
-            case 'monthly':
-                return this.pricePerNodePerMonth;
-            case 'yearly':
-                return this.pricePerNodePerYear;
-            case 'quarterly':
-                return this.quarterlyNodePrice;
-            default:
-                return this.pricePerNodePerMonth;
-        }
-    }
-    // Calculate total price including nodes
-    getTotalPriceForCycle(cycle, nodeCount = 0) {
-        const basePrice = this.getPriceForCycle(cycle);
-        const nodePrice = this.getNodePriceForCycle(cycle) * nodeCount;
-        return basePrice + nodePrice;
+    // Calculate total price based on device count
+    getTotalPriceForCycle(cycle, deviceCount = 1) {
+        const pricePerDevice = this.getDevicePriceForCycle(cycle);
+        return pricePerDevice * deviceCount;
     }
     // Get price in INR
-    getPriceInInr(cycle, nodeCount = 0) {
-        const usdPrice = this.getTotalPriceForCycle(cycle, nodeCount);
+    getPriceInInr(cycle, deviceCount = 1) {
+        const usdPrice = this.getTotalPriceForCycle(cycle, deviceCount);
         return usdPrice * this.usdToInrRate;
     }
     // Get formatted price in both currencies
-    getFormattedPrices(cycle, nodeCount = 0) {
-        const usdPrice = this.getTotalPriceForCycle(cycle, nodeCount);
-        const inrPrice = this.getPriceInInr(cycle, nodeCount);
+    getFormattedPrices(cycle, deviceCount = 1) {
+        const usdPrice = this.getTotalPriceForCycle(cycle, deviceCount);
+        const inrPrice = this.getPriceInInr(cycle, deviceCount);
         return {
             usd: new Intl.NumberFormat('en-US', {
                 style: 'currency',
@@ -84,9 +57,9 @@ let SubscriptionPlan = class SubscriptionPlan {
     }
     // Get discount percentage for yearly billing
     getYearlyDiscount() {
-        const monthlyTotal = this.basePricePerMonth * 12;
+        const monthlyTotal = this.pricePerDevicePerMonth * 12;
         if (monthlyTotal > 0) {
-            return Math.round(((monthlyTotal - this.basePricePerYear) / monthlyTotal) * 100);
+            return Math.round(((monthlyTotal - this.pricePerDevicePerYear) / monthlyTotal) * 100);
         }
         return 0;
     }
@@ -109,29 +82,17 @@ __decorate([
     __metadata("design:type", String)
 ], SubscriptionPlan.prototype, "description", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2 }),
+    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2, default: 1.50 }),
     __metadata("design:type", Number)
-], SubscriptionPlan.prototype, "basePricePerMonth", void 0);
+], SubscriptionPlan.prototype, "pricePerDevicePerMonth", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2 }),
+    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2, default: 15.00 }),
     __metadata("design:type", Number)
-], SubscriptionPlan.prototype, "basePricePerYear", void 0);
+], SubscriptionPlan.prototype, "pricePerDevicePerYear", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2, nullable: true }),
+    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2, default: 4.00 }),
     __metadata("design:type", Number)
-], SubscriptionPlan.prototype, "basePricePerQuarter", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2, default: 2.00 }),
-    __metadata("design:type", Number)
-], SubscriptionPlan.prototype, "pricePerNodePerMonth", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2, default: 20.00 }),
-    __metadata("design:type", Number)
-], SubscriptionPlan.prototype, "pricePerNodePerYear", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2, nullable: true }),
-    __metadata("design:type", Number)
-], SubscriptionPlan.prototype, "pricePerNodePerQuarter", void 0);
+], SubscriptionPlan.prototype, "pricePerDevicePerQuarter", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2, default: 75.00 }),
     __metadata("design:type", Number)

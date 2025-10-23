@@ -93,6 +93,10 @@ __decorate([
     __metadata("design:type", Number)
 ], Subscription.prototype, "amount", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'int', default: 1 }),
+    __metadata("design:type", Number)
+], Subscription.prototype, "deviceCount", void 0);
+__decorate([
     (0, typeorm_1.Column)({ type: 'date' }),
     __metadata("design:type", Date)
 ], Subscription.prototype, "startDate", void 0);

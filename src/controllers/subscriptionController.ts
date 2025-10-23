@@ -27,7 +27,7 @@ export const getSubscriptionPlans = async (
     const planRepository = AppDataSource.getRepository(SubscriptionPlan);
     const plans = await planRepository.find({
       where: { isActive: true },
-      order: { sortOrder: "ASC", basePricePerMonth: "ASC" },
+      order: { sortOrder: "ASC", pricePerDevicePerMonth: "ASC" },
     });
 
     return res.json({

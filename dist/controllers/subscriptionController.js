@@ -46,7 +46,7 @@ const getSubscriptionPlans = async (req, res) => {
         const planRepository = data_source_1.AppDataSource.getRepository(SubscriptionPlan_1.SubscriptionPlan);
         const plans = await planRepository.find({
             where: { isActive: true },
-            order: { sortOrder: "ASC", basePricePerMonth: "ASC" },
+            order: { sortOrder: "ASC", pricePerDevicePerMonth: "ASC" },
         });
         return res.json({
             success: true,

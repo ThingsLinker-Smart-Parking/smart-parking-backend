@@ -26,6 +26,9 @@ export class Subscription {
     @Column({ type: 'decimal', precision: 10, scale: 2 })
     amount: number;
 
+    @Column({ type: 'int', default: 1 })
+    deviceCount: number; // Number of devices (nodes) user is paying for
+
     @Column({ type: 'date' })
     startDate: Date;
 

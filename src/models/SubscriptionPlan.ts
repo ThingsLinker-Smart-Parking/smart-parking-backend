@@ -18,25 +18,15 @@ export class SubscriptionPlan {
     @Column({ type: 'text', nullable: true })
     description: string;
 
-    // Base pricing in USD
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
-    basePricePerMonth: number;
+    // Per-device pricing in USD (simple model: $1.5 per device per month)
+    @Column({ type: 'decimal', precision: 10, scale: 2, default: 1.50 })
+    pricePerDevicePerMonth: number;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
-    basePricePerYear: number;
+    @Column({ type: 'decimal', precision: 10, scale: 2, default: 15.00 })
+    pricePerDevicePerYear: number;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-    basePricePerQuarter: number;
-
-    // Per-node pricing in USD
-    @Column({ type: 'decimal', precision: 10, scale: 2, default: 2.00 })
-    pricePerNodePerMonth: number;
-
-    @Column({ type: 'decimal', precision: 10, scale: 2, default: 20.00 })
-    pricePerNodePerYear: number;
-
-    @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-    pricePerNodePerQuarter: number;
+    @Column({ type: 'decimal', precision: 10, scale: 2, default: 4.00 })
+    pricePerDevicePerQuarter: number;
 
     // Exchange rate for INR (can be updated by super admin)
     @Column({ type: 'decimal', precision: 10, scale: 2, default: 75.00 })
@@ -104,69 +94,37 @@ export class SubscriptionPlan {
     @UpdateDateColumn()
     updatedAt: Date;
 
-    // Virtual properties for calculated values
-    get monthlyPrice(): number {
-        return this.basePricePerMonth;
-    }
-
-    get yearlyPrice(): number {
-        return this.basePricePerYear;
-    }
-
-    get quarterlyPrice(): number {
-        return this.basePricePerQuarter || (this.basePricePerMonth * 3);
-    }
-
-    get quarterlyNodePrice(): number {
-        return this.pricePerNodePerQuarter || (this.pricePerNodePerMonth * 3);
-    }
-
-    // Get price for specific billing cycle
-    getPriceForCycle(cycle: BillingCycle): number {
+    // Get per-device price for specific billing cycle
+    getDevicePriceForCycle(cycle: BillingCycle): number {
         switch (cycle) {
             case 'monthly':
-                return this.basePricePerMonth;
+                return this.pricePerDevicePerMonth;
             case 'yearly':
-                return this.basePricePerYear;
+                return this.pricePerDevicePerYear;
             case 'quarterly':
-                return this.basePricePerQuarter || (this.basePricePerMonth * 3);
+                return this.pricePerDevicePerQuarter;
             default:
-                return this.basePricePerMonth;
+                return this.pricePerDevicePerMonth;
         }
     }
 
-    // Get per-node price for specific billing cycle
-    getNodePriceForCycle(cycle: BillingCycle): number {
-        switch (cycle) {
-            case 'monthly':
-                return this.pricePerNodePerMonth;
-            case 'yearly':
-                return this.pricePerNodePerYear;
-            case 'quarterly':
-                return this.quarterlyNodePrice;
-            default:
-                return this.pricePerNodePerMonth;
-        }
-    }
-
-    // Calculate total price including nodes
-    getTotalPriceForCycle(cycle: BillingCycle, nodeCount: number = 0): number {
-        const basePrice = this.getPriceForCycle(cycle);
-        const nodePrice = this.getNodePriceForCycle(cycle) * nodeCount;
-        return basePrice + nodePrice;
+    // Calculate total price based on device count
+    getTotalPriceForCycle(cycle: BillingCycle, deviceCount: number = 1): number {
+        const pricePerDevice = this.getDevicePriceForCycle(cycle);
+        return pricePerDevice * deviceCount;
     }
 
     // Get price in INR
-    getPriceInInr(cycle: BillingCycle, nodeCount: number = 0): number {
-        const usdPrice = this.getTotalPriceForCycle(cycle, nodeCount);
+    getPriceInInr(cycle: BillingCycle, deviceCount: number = 1): number {
+        const usdPrice = this.getTotalPriceForCycle(cycle, deviceCount);
         return usdPrice * this.usdToInrRate;
     }
 
     // Get formatted price in both currencies
-    getFormattedPrices(cycle: BillingCycle, nodeCount: number = 0): { usd: string; inr: string } {
-        const usdPrice = this.getTotalPriceForCycle(cycle, nodeCount);
-        const inrPrice = this.getPriceInInr(cycle, nodeCount);
-        
+    getFormattedPrices(cycle: BillingCycle, deviceCount: number = 1): { usd: string; inr: string } {
+        const usdPrice = this.getTotalPriceForCycle(cycle, deviceCount);
+        const inrPrice = this.getPriceInInr(cycle, deviceCount);
+
         return {
             usd: new Intl.NumberFormat('en-US', {
                 style: 'currency',
@@ -186,9 +144,9 @@ export class SubscriptionPlan {
 
     // Get discount percentage for yearly billing
     getYearlyDiscount(): number {
-        const monthlyTotal = this.basePricePerMonth * 12;
+        const monthlyTotal = this.pricePerDevicePerMonth * 12;
         if (monthlyTotal > 0) {
-            return Math.round(((monthlyTotal - this.basePricePerYear) / monthlyTotal) * 100);
+            return Math.round(((monthlyTotal - this.pricePerDevicePerYear) / monthlyTotal) * 100);
         }
         return 0;
     }
