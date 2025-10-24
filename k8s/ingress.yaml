@@ -1,0 +1,174 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: smart-parking-backend-ingress
+  namespace: smart-parking
+  labels:
+    app: smart-parking-backend
+  annotations:
+    # Nginx Ingress Controller annotations
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "20"
+
+    # CORS
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.smartparking.com,capacitor://localhost"
+
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+      more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";
+
+    # SSL/TLS configuration
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.2 TLSv1.3"
+    nginx.ingress.kubernetes.io/ssl-ciphers: "HIGH:!aNULL:!MD5"
+
+    # Backend protocol
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+
+    # Sticky sessions (if needed for WebSocket/MQTT)
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/affinity-mode: "persistent"
+    nginx.ingress.kubernetes.io/session-cookie-name: "smart-parking-affinity"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
+    nginx.ingress.kubernetes.io/session-cookie-samesite: "Lax"
+
+    # AWS ALB annotations (alternative to Nginx)
+    # kubernetes.io/ingress.class: "alb"
+    # alb.ingress.kubernetes.io/scheme: "internet-facing"
+    # alb.ingress.kubernetes.io/target-type: "ip"
+    # alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:region:account-id:certificate/cert-id"
+    # alb.ingress.kubernetes.io/ssl-policy: "ELBSecurityPolicy-TLS-1-2-2017-01"
+    # alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    # alb.ingress.kubernetes.io/actions.ssl-redirect: '{"Type": "redirect", "RedirectConfig": { "Protocol": "HTTPS", "Port": "443", "StatusCode": "HTTP_301"}}'
+
+    # GCP Load Balancer annotations (alternative to Nginx)
+    # kubernetes.io/ingress.class: "gce"
+    # kubernetes.io/ingress.global-static-ip-name: "smart-parking-ip"
+    # networking.gke.io/managed-certificates: "smart-parking-cert"
+    # kubernetes.io/ingress.allow-http: "false"
+
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - api.smartparking.com
+        - "*.smartparking.com"
+      secretName: smartparking-tls-cert
+  rules:
+    - host: api.smartparking.com
+      http:
+        paths:
+          # Main API routes
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: smart-parking-backend
+                port:
+                  name: http
+
+          # Webhook endpoint (may need different rate limiting)
+          - path: /api/webhook
+            pathType: Prefix
+            backend:
+              service:
+                name: smart-parking-backend
+                port:
+                  name: http
+
+          # Health check endpoint
+          - path: /api/health
+            pathType: Exact
+            backend:
+              service:
+                name: smart-parking-backend
+                port:
+                  name: http
+
+          # Swagger documentation
+          - path: /api-docs
+            pathType: Prefix
+            backend:
+              service:
+                name: smart-parking-backend
+                port:
+                  name: http
+
+---
+# Certificate resource (if using cert-manager)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: smartparking-tls-cert
+  namespace: smart-parking
+spec:
+  secretName: smartparking-tls-cert
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+    - api.smartparking.com
+    - "*.smartparking.com"
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+
+---
+# ClusterIssuer for Let's Encrypt (if using cert-manager)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    # Production Let's Encrypt server
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@smartparking.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+      # DNS-01 solver (alternative for wildcard certificates)
+      # - dns01:
+      #     cloudflare:
+      #       email: admin@smartparking.com
+      #       apiKeySecretRef:
+      #         name: cloudflare-api-key-secret
+      #         key: api-key
+
+---
+# Staging ClusterIssuer for testing (recommended to test first)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    # Staging Let's Encrypt server
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@smartparking.com
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx

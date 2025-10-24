@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: smart-parking-config
+  namespace: smart-parking
+  labels:
+    app: smart-parking-backend
+data:
+  # Server Configuration
+  NODE_ENV: "production"
+  PORT: "3000"
+  API_VERSION: "v1"
+
+  # Database Configuration (non-sensitive)
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+  DB_NAME: "smart_parking"
+  DB_SSL: "false"
+  DB_POOL_MAX: "20"
+  DB_POOL_MIN: "5"
+  DB_IDLE_TIMEOUT: "30000"
+  DB_CONNECTION_TIMEOUT: "2000"
+  DB_LOGGING: "false"
+
+  # JWT Configuration (non-sensitive)
+  JWT_EXPIRES_IN: "24h"
+  SESSION_MAX_AGE: "86400000"
+
+  # Email Configuration (non-sensitive)
+  SMTP_HOST: "smtp.hostinger.com"
+  SMTP_PORT: "465"
+  EMAIL_FROM_NAME: "Smart Parking System"
+  DEFAULT_EMAIL: "noreply@smartparking.com"
+
+  # MQTT Configuration (non-sensitive)
+  MQTT_BROKER_URL: "mqtt://mqtt-broker:1883"
+  MQTT_CLIENT_ID: "smart-parking-backend"
+
+  # Cashfree Configuration (non-sensitive)
+  CASHFREE_API_VERSION: "2023-08-01"
+  CASHFREE_ENVIRONMENT: "PRODUCTION"
+  CASHFREE_RETURN_URL: "smartparking://payment/return"
+
+  # App Configuration
+  BASE_URL: "https://api.smartparking.com"
+  FLUTTER_APP_SCHEME: "smartparking"
+  ALLOWED_ORIGINS: "https://app.smartparking.com,capacitor://localhost,http://localhost"
+
+  # Logging Configuration
+  LOG_LEVEL: "info"
+  ENABLE_FILE_LOGGING: "true"
+
+  # Rate Limiting
+  RATE_LIMIT_WINDOW_MS: "900000"
+  RATE_LIMIT_MAX_REQUESTS: "100"
+  AUTH_RATE_LIMIT_MAX: "5"
+  STRICT_RATE_LIMIT_MAX: "10"

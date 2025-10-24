@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: smart-parking
+  labels:
+    name: smart-parking
+    app: smart-parking-backend
+    environment: production
+  annotations:
+    description: "Smart Parking Backend Application Namespace"
