@@ -48,7 +48,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build Docker image
-        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/smart-parking:latest -f deployment/Dockerfile .
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/smart-parking:latest .
 
       - name: Push Docker image
         if: ${{ secrets.DOCKERHUB_USERNAME && secrets.DOCKER_PASSWORD }}
