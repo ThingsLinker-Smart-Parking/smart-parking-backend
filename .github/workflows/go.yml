@@ -47,7 +47,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/smart-parking
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/smart-parking-backend
           tags: |
             type=raw,value=latest
             type=sha
