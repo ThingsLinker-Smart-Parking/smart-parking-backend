@@ -12,9 +12,9 @@ data:
   API_VERSION: "v1"
 
   # Database Configuration (non-sensitive)
-  DB_HOST: "postgres-service"
+  DB_HOST: "156.67.218.14"
   DB_PORT: "5432"
-  DB_NAME: "smart_parking"
+  DB_NAME: "smart_parking_db"
   DB_SSL: "false"
   DB_POOL_MAX: "20"
   DB_POOL_MIN: "5"
@@ -33,18 +33,16 @@ data:
   DEFAULT_EMAIL: "noreply@smartparking.com"
 
   # MQTT Configuration (non-sensitive)
-  MQTT_BROKER_URL: "mqtt://mqtt-broker:1883"
-  MQTT_CLIENT_ID: "smart-parking-backend"
+  MQTT_BROKER_URL: "mqtt://mqtt.test.thingslinker.com:1883"
 
   # Cashfree Configuration (non-sensitive)
   CASHFREE_API_VERSION: "2023-08-01"
   CASHFREE_ENVIRONMENT: "PRODUCTION"
-  CASHFREE_RETURN_URL: "smartparking://payment/return"
-
+  CASHFREE_RETURN_URL: "https://parking.tarangify.com/cashfree_return.html"
   # App Configuration
-  BASE_URL: "https://api.smartparking.com"
+  BASE_URL: "http://parking.tarangify.com/"
   FLUTTER_APP_SCHEME: "smartparking"
-  ALLOWED_ORIGINS: "https://app.smartparking.com,capacitor://localhost,http://localhost"
+  ALLOWED_ORIGINS: "https://parking.tarangify.com/"
 
   # Logging Configuration
   LOG_LEVEL: "info"
@@ -55,3 +53,11 @@ data:
   RATE_LIMIT_MAX_REQUESTS: "100"
   AUTH_RATE_LIMIT_MAX: "5"
   STRICT_RATE_LIMIT_MAX: "10"
+
+  MAX_FILE_SIZE: "5242880"
+  UPLOAD_DIR: "uploads"
+
+  # Security Headers
+  ENABLE_CSP: "true"
+  ENABLE_HSTS: "true"
+  ENABLE_NO_SNIFF: "true"

@@ -35,20 +35,20 @@ spec:
 
 ---
 # Headless service for StatefulSet (if needed for MQTT connections)
-apiVersion: v1
-kind: Service
-metadata:
-  name: smart-parking-backend-headless
-  namespace: smart-parking
-  labels:
-    app: smart-parking-backend
-spec:
-  type: ClusterIP
-  clusterIP: None
-  selector:
-    app: smart-parking-backend
-  ports:
-    - name: http
-      protocol: TCP
-      port: 3000
-      targetPort: http
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: smart-parking-backend-headless
+#   namespace: smart-parking
+#   labels:
+#     app: smart-parking-backend
+# spec:
+#   type: ClusterIP
+#   clusterIP: None
+#   selector:
+#     app: smart-parking-backend
+#   ports:
+#     - name: http
+#       protocol: TCP
+#       port: 3000
+#       targetPort: http

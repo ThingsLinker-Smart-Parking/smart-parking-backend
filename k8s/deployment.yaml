@@ -7,7 +7,7 @@ metadata:
     app: smart-parking-backend
     version: v1
 spec:
-  replicas: 3
+  replicas: 2
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -40,8 +40,8 @@ spec:
       # Init container for database migrations
       initContainers:
         - name: db-migration
-          image: your-registry/smart-parking-backend:latest
-          imagePullPolicy: IfNotPresent
+          image: mahajan850/smart-parking-backend:latest
+          imagePullPolicy: Always
           command: ["npm", "run", "migration:run"]
           envFrom:
             - configMapRef:
@@ -57,8 +57,8 @@ spec:
 
       containers:
         - name: smart-parking-backend
-          image: your-registry/smart-parking-backend:latest
-          imagePullPolicy: IfNotPresent
+          image: mahajan850/smart-parking-backend:latest
+          imagePullPolicy: Always
 
           ports:
             - name: http
@@ -187,7 +187,7 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: smart-parking-backend
-  minReplicas: 3
+  minReplicas: 2
   maxReplicas: 10
   metrics:
     - type: Resource
