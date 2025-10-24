@@ -40,7 +40,7 @@ spec:
       # Init container for database migrations
       initContainers:
         - name: db-migration
-          image: mahajan850/smart-parking-backend:latest
+          image: mahajan850/smart-parking-backend
           imagePullPolicy: Always
           command: ["npm", "run", "migration:run"]
           envFrom:
@@ -57,7 +57,7 @@ spec:
 
       containers:
         - name: smart-parking-backend
-          image: mahajan850/smart-parking-backend:latest
+          image: mahajan850/smart-parking-backend
           imagePullPolicy: Always
 
           ports:
