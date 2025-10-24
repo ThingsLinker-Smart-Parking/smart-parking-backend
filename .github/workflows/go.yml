@@ -85,4 +85,5 @@ jobs:
 
       - name: Reapply manifests
         run: |
-          kubectl apply -f deployment/deploy.yaml
+          kubectl config set-context --current --namespace=smart-parking
+          kubectl apply -f k8s/deploy.yaml 
