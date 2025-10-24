@@ -72,7 +72,7 @@ jobs:
   redeploy:
     runs-on: ubuntu-latest
     needs: build-image
-    if: github.event_name == 'push' && secrets.KUBE_CONFIG != ''
+    if: ${{ github.event_name == 'push' && secrets.KUBE_CONFIG != '' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
