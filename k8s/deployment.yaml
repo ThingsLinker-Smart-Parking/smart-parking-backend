@@ -38,22 +38,22 @@ spec:
       serviceAccountName: smart-parking-backend
 
       # Init container for database migrations
-      initContainers:
-        - name: db-migration
-          image: mahajan850/smart-parking-backend
-          imagePullPolicy: Always
-          command: ["npm", "run", "migration:run"]
-          envFrom:
-            - configMapRef:
-                name: smart-parking-config
-            - secretRef:
-                name: smart-parking-secrets
-          securityContext:
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-            readOnlyRootFilesystem: false
+      # initContainers:
+      #   - name: db-migration
+      #     image: mahajan850/smart-parking-backend
+      #     imagePullPolicy: Always
+      #     command: ["npm", "run", "migration:run"]
+      #     envFrom:
+      #       - configMapRef:
+      #           name: smart-parking-config
+      #       - secretRef:
+      #           name: smart-parking-secrets
+      #     securityContext:
+      #       allowPrivilegeEscalation: false
+      #       capabilities:
+      #         drop:
+      #           - ALL
+      #       readOnlyRootFilesystem: false
 
       containers:
         - name: smart-parking-backend
