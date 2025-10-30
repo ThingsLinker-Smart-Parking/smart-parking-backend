@@ -1,7 +1,4 @@
 import { Router } from 'express';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 import {
   createTicket,
   getAllTickets,
@@ -15,47 +12,9 @@ import {
   getUnreadCount,
 } from '../controllers/ticketController';
 import { authenticateToken, requireRole } from '../middleware/auth';
+import { upload } from '../middleware/sftpUpload';
 
 const router = Router();
-
-// Ensure uploads directory exists
-const uploadsDir = path.join(process.cwd(), 'uploads', 'tickets');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  },
-});
-
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  // Allow images and documents
-  const allowedTypes = /jpeg|jpg|png|gif|webp|pdf|doc|docx/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
-
-  if (extname && mimetype) {
-    return cb(null, true);
-  } else {
-    cb(new Error('Only images and documents are allowed'));
-  }
-};
-
-const upload = multer({
-  storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB per file
-    files: 5, // Max 5 files
-  },
-  fileFilter,
-});
 
 /**
  * @swagger

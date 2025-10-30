@@ -138,11 +138,18 @@ const formatErrorResponse = (
 const logError = (error: AppError | Error, req: LoggedRequest, res: Response) => {
   const isAppError = error instanceof AppError;
   const statusCode = isAppError ? error.statusCode : 500;
-  
+  const url = req.originalUrl || req.url;
+
+  // Skip logging for known browser artifacts (Next.js HMR, webpack dev server, etc.)
+  const ignoredPaths = ['/_next/', '/webpack', '/__webpack'];
+  if (statusCode === 404 && ignoredPaths.some(path => url.includes(path))) {
+    return; // Silently ignore these 404s
+  }
+
   const logContext = {
     requestId: req.requestId,
     method: req.method,
-    url: req.originalUrl || req.url,
+    url,
     statusCode,
     userId: (req as any).user?.id,
     ip: req.ip || req.connection.remoteAddress,

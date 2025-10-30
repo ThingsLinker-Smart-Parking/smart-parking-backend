@@ -1,50 +1,10 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-const multer_1 = __importDefault(require("multer"));
-const path_1 = __importDefault(require("path"));
-const fs_1 = __importDefault(require("fs"));
 const ticketController_1 = require("../controllers/ticketController");
 const auth_1 = require("../middleware/auth");
+const sftpUpload_1 = require("../middleware/sftpUpload");
 const router = (0, express_1.Router)();
-// Ensure uploads directory exists
-const uploadsDir = path_1.default.join(process.cwd(), 'uploads', 'tickets');
-if (!fs_1.default.existsSync(uploadsDir)) {
-    fs_1.default.mkdirSync(uploadsDir, { recursive: true });
-}
-// Configure multer for file uploads
-const storage = multer_1.default.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadsDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, uniqueSuffix + path_1.default.extname(file.originalname));
-    },
-});
-const fileFilter = (req, file, cb) => {
-    // Allow images and documents
-    const allowedTypes = /jpeg|jpg|png|gif|webp|pdf|doc|docx/;
-    const extname = allowedTypes.test(path_1.default.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    if (extname && mimetype) {
-        return cb(null, true);
-    }
-    else {
-        cb(new Error('Only images and documents are allowed'));
-    }
-};
-const upload = (0, multer_1.default)({
-    storage,
-    limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB per file
-        files: 5, // Max 5 files
-    },
-    fileFilter,
-});
 /**
  * @swagger
  * tags:
@@ -98,7 +58,7 @@ const upload = (0, multer_1.default)({
  *       401:
  *         description: Unauthorized
  */
-router.post('/', auth_1.authenticateToken, upload.array('attachments', 5), ticketController_1.createTicket);
+router.post('/', auth_1.authenticateToken, sftpUpload_1.upload.array('attachments', 5), ticketController_1.createTicket);
 /**
  * @swagger
  * /api/tickets:
@@ -338,7 +298,7 @@ router.get('/:ticketId/messages', auth_1.authenticateToken, ticketController_1.g
  *       404:
  *         description: Ticket not found
  */
-router.post('/:ticketId/messages', auth_1.authenticateToken, upload.array('attachments', 5), ticketController_1.sendMessage);
+router.post('/:ticketId/messages', auth_1.authenticateToken, sftpUpload_1.upload.array('attachments', 5), ticketController_1.sendMessage);
 /**
  * @swagger
  * /api/tickets/{ticketId}/messages/read:

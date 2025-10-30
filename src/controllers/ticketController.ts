@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { ticketService } from '../services/ticketService';
 import { AuthRequest } from '../middleware/auth';
 import { TicketStatus, TicketPriority, TicketCategory } from '../models/SupportTicket';
+import { getFileUrl, getFilename } from '../middleware/sftpUpload';
 
 /**
  * Create a new support ticket
@@ -41,9 +42,9 @@ export const createTicket = async (req: AuthRequest, res: Response): Promise<Res
       });
     }
 
-    // Get attachments from multer (if file upload is configured)
+    // Get attachments from multer and generate public URLs
     const attachments = req.files as Express.Multer.File[];
-    const attachmentUrls = attachments?.map((file) => `/uploads/tickets/${file.filename}`) || [];
+    const attachmentUrls = attachments?.map((file) => getFileUrl(getFilename(file))) || [];
 
     const ticket = await ticketService.createTicket({
       userId,
@@ -356,9 +357,9 @@ export const sendMessage = async (req: AuthRequest, res: Response): Promise<Resp
       });
     }
 
-    // Get attachments from multer
+    // Get attachments from multer and generate public URLs
     const attachments = req.files as Express.Multer.File[];
-    const attachmentUrls = attachments?.map((file) => `/uploads/tickets/${file.filename}`) || [];
+    const attachmentUrls = attachments?.map((file) => getFileUrl(getFilename(file))) || [];
 
     const savedMessage = await ticketService.sendMessage({
       ticketId,

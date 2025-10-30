@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getUnreadCount = exports.getStatistics = exports.markMessagesAsRead = exports.sendMessage = exports.getTicketMessages = exports.deleteTicket = exports.updateTicket = exports.getTicketById = exports.getAllTickets = exports.createTicket = void 0;
 const ticketService_1 = require("../services/ticketService");
+const sftpUpload_1 = require("../middleware/sftpUpload");
 /**
  * Create a new support ticket
  * @route POST /api/tickets
@@ -35,9 +36,9 @@ const createTicket = async (req, res) => {
                 message: 'Category is required',
             });
         }
-        // Get attachments from multer (if file upload is configured)
+        // Get attachments from multer and generate public URLs
         const attachments = req.files;
-        const attachmentUrls = attachments?.map((file) => `/uploads/tickets/${file.filename}`) || [];
+        const attachmentUrls = attachments?.map((file) => (0, sftpUpload_1.getFileUrl)((0, sftpUpload_1.getFilename)(file))) || [];
         const ticket = await ticketService_1.ticketService.createTicket({
             userId,
             title: title.trim(),
@@ -325,9 +326,9 @@ const sendMessage = async (req, res) => {
                 message: 'Access denied',
             });
         }
-        // Get attachments from multer
+        // Get attachments from multer and generate public URLs
         const attachments = req.files;
-        const attachmentUrls = attachments?.map((file) => `/uploads/tickets/${file.filename}`) || [];
+        const attachmentUrls = attachments?.map((file) => (0, sftpUpload_1.getFileUrl)((0, sftpUpload_1.getFilename)(file))) || [];
         const savedMessage = await ticketService_1.ticketService.sendMessage({
             ticketId,
             senderId: userId,
